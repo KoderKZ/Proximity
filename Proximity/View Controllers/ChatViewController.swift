@@ -10,8 +10,9 @@ import Foundation
 import UIKit
 import GooglePlaces
 import FirebaseStorage
-class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSource,UIImagePickerControllerDelegate,UINavigationControllerDelegate,UITextViewDelegate{
-    
+class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSource,UIImagePickerControllerDelegate,UINavigationControllerDelegate,UITextViewDelegate,UIScrollViewDelegate{
+    fileprivate lazy var presentationAnimator = GuillotineTransitionAnimation()
+
     @IBOutlet weak var sendingView: UIView!
     @IBOutlet weak var joinChatLabel: UILabel!
     @IBOutlet weak var menuButton: UIButton!
@@ -23,15 +24,27 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     @IBOutlet weak var chatView: UITableView!
     @IBOutlet var imageButton: UIButton!
     var chat:Chat!
+    var changingLines = false
     var selectionView:SelectionView!
     var displayImageView:DisplayImageView!
     let profileIcons = NSMutableDictionary()
     let members:NSMutableArray = NSMutableArray()
     var postAmount = 0
+    var canDismiss = true
+    var keyboardUp = false
+    
     var statusBarHidden:Bool = false{
         didSet{
-            UIView.animate(withDuration: 0.5) {
-                self.setNeedsStatusBarAppearanceUpdate()
+            if statusBarHidden == false{
+                delay(0.25){
+                    UIView.animate(withDuration: 0.5) {
+                        self.setNeedsStatusBarAppearanceUpdate()
+                    }
+                }
+            }else{
+                UIView.animate(withDuration: 0.5) {
+                    self.setNeedsStatusBarAppearanceUpdate()
+                }
             }
         }
     }
@@ -43,54 +56,41 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     //MARK: View Loading
     override func viewDidLoad() {
         
-        chatView.register(ChatMessageCell.self, forCellReuseIdentifier: "cell")
-        let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(UIViewController.dismissKeyboard))
+        let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(tableViewTapped))
         tap.cancelsTouchesInView = false
         chatView.addGestureRecognizer(tap)
-        chatView.backgroundColor = bgColor
-        
+
+    
         
         //set up side bar for selecting chats
-        selectionView = SelectionView(frame: CGRect(x: -self.view.frame.size.width/2, y: 0, width: self.view.frame.size.width/2, height: self.view.frame.size.height))
+        selectionView = SelectionView(frame: CGRect(x: -self.view.frame.size.width/4*3, y: 0, width: self.view.frame.size.width/4*3, height: self.view.frame.size.height))
         selectionView.setUpLabels(cellHeight: menuBar.frame.size.height)//pass in menu bar height
         selectionView.alpha = 0
-        for var i in 0..<FirebaseHelper.personal.chats.count{
-            let cell = selectionView.tableView.cellForRow(at: IndexPath(item: i, section: 0))
-            (cell?.contentView.subviews[1] as! UIButton).addTarget(self, action: #selector(chatTapped(sender:)), for: .touchUpInside)//set tap chat gesture
-        }
-        for var i in 0..<FirebaseHelper.personal.friends.count{
-            let cell = selectionView.tableView.cellForRow(at: IndexPath(item: i, section: 1))
-            (cell?.contentView.subviews[0] as! UIButton).addTarget(self, action: #selector(moveToProfileViewController(sender:)), for: .touchUpInside)//set tap chat gesture
-        }
+
         self.view.addSubview(selectionView)
         
         displayImageView = DisplayImageView(frame: self.view.frame)
         self.view.addSubview(displayImageView)
         
-        menuBar.backgroundColor = darkBgColor
+//        menuBar.backgroundColor = darkBgColor
+
         menuButton.adjustsImageWhenHighlighted = false
         settingsButton.adjustsImageWhenHighlighted = false
         
-        let border1 = CALayer()
-        border1.frame = CGRect(x: 0, y: 0, width: 1, height: textView.frame.size.height)
-        border1.backgroundColor = UIColor.white.cgColor
-        let border2 = CALayer()
-        border2.frame = CGRect(x: textView.frame.size.width+textView.frame.size.height, y: 0, width: 1, height: textView.frame.size.height)
-        border2.backgroundColor = UIColor.white.cgColor
-        textView.layer.addSublayer(border1)
-        textView.layer.addSublayer(border2)
+        chatView.backgroundColor = lightBgColor
         
-        textView.backgroundColor = darkBgColor
-        textView.textColor = .white
+        textView.backgroundColor = .white
+        textView.textColor = .black
         textView.delegate = self
-        sendButton.backgroundColor = darkBgColor
-        imageButton.backgroundColor = darkBgColor
-        sendingView.backgroundColor = darkBgColor
+        textView.centerVertically()
+        textView.layer.borderWidth = 1
+        textView.layer.borderColor = UIColor.black.cgColor
+        sendButton.backgroundColor = .white
+        sendButton.setTitleColor(blackBgColor, for: .normal)
+        imageButton.backgroundColor = .white
+        sendingView.backgroundColor = .white
         
-        textView.layer.borderColor = UIColor.white.cgColor
-        textView.layer.borderWidth = 2
-        
-        sendingView.frame.size.height = (textView.font?.lineHeight)!
+
         
         sendButton.frame.size.height = (textView.font?.lineHeight)!
         imageButton.frame.size = CGSize(width: (textView.font?.lineHeight)!, height: (textView.font?.lineHeight)!)
@@ -105,6 +105,54 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         chatView.separatorColor = .clear
         chatView.allowsSelection = false
         
+        
+        StoreViewed.sharedInstance.amtViewed.addObserver(self, forKeyPath: "count", options: .new, context: nil)
+
+        
+        if selectionView.frame.origin.x == 0{
+            moveMenu()
+        }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(true)
+        selectionView.alpha = 1
+        textView.isEditable = true
+        canDismiss = true
+        selectionView.tableView.reloadData {
+            self.resetSelectionViewButtons()
+        }
+    }
+    
+    func resetSelectionViewButtons(){
+        for var i in 0..<FirebaseHelper.personal.chats.count{
+            let cell = selectionView.tableView.cellForRow(at: IndexPath(item: i, section: 0))
+            (cell?.contentView.subviews[0] as! UIButton).addTarget(self, action: #selector(chatTapped(sender:)), for: .touchUpInside)//set tap chat gesture
+        }
+        for var i in 0..<FirebaseHelper.personal.friends.count{
+            let cell = selectionView.tableView.cellForRow(at: IndexPath(item: i, section: 1))
+            (cell?.contentView.subviews[0] as! UIButton).addTarget(self, action: #selector(moveToProfileViewController(sender:)), for: .touchUpInside)//set tap chat gesture
+        }
+        selectionView.joinChatButton.tag = 0
+        selectionView.addFriendButton.tag = 1
+        selectionView.joinChatButton.addTarget(self, action: #selector(moveToAddViewController(sender:)), for: .touchUpInside)
+        selectionView.addFriendButton.addTarget(self, action: #selector(moveToAddViewController(sender:)), for: .touchUpInside)
+        selectionView.selfButton.addTarget(self, action: #selector(moveToSelfProfile), for: .touchUpInside)
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        
+        let _textView = UITextView()
+        _textView.text = " "
+        textView.frame.size.height = sendingView.frame.size.height
+        textView.frame.origin.y = sendingView.frame.size.height/2-textView.frame.size.height/2
+        self.textView.contentSize = textView.frame.size
+        textView.frame.size.width = sendingView.frame.size.width-imageButton.frame.size.width-sendButton.frame.size.width
+        
+        selectionView.tableView.reloadData {
+            self.resetSelectionViewButtons()
+        }
+        super.viewWillAppear(true)
         if chat != nil{
             chatNameLabel.text = chat.chatName
             fetchMembers(chatId: chat.id)
@@ -118,31 +166,25 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             chatNameLabel.text = chat.chatName
             fetchMembers(chatId: chat.id)
             fetchPosts(chatId: chat.id)
+            StoreViewed.sharedInstance.addViewed(id: chat.id)
         }else if FirebaseHelper.personal.chats.count == 0{
             settingsButton.alpha = 0
             chatNameLabel.alpha = 0
             joinChatLabel.alpha = 1
         }
     }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(true)
-        selectionView.alpha = 1
-        textView.frame.size.height = sendingView.frame.size.height
-
-        selectionView.joinChatButton.addTarget(self, action: #selector(moveToAddViewController), for: .touchUpInside)
-//        selectionView.addFriendButton.addTarget(self, action: #selector(moveToProfileViewController), for: .touchUpInside)
-        selectionView.selfButton.addTarget(self, action: #selector(moveToSelfProfile), for: .touchUpInside)
-//        selectionView.tableView.reloadData()
-    }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(true)
-    }
     
 
     
     //MARK: Observers for data
+    
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "count"{
+            selectionView.tableView.reloadData()
+            resetSelectionViewButtons()
+        }
+    }
     
     func fetchMembers(chatId:String){
         var members = NSArray()
@@ -156,57 +198,48 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             if !contains{
                 self.chat.members.add(snapshot.value)
             }
-            FirebaseHelper.ref.child("users").child(snapshot.value as! String).observe(.value, with: { (snapshot2) in
-                if let dictionary = snapshot2.value as? [String:AnyObject]{
-                    var friends = NSMutableArray()
-                    var chats = NSMutableArray()
-                    if dictionary.keys.contains("friends"){friends = dictionary["friends"] as! NSMutableArray}
-                    if dictionary.keys.contains("chats"){chats = dictionary["chats"] as! NSMutableArray}
-                    let profile = Profile(username: dictionary["username"] as! String, userId: snapshot.value as! String, friends: friends, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
-                    self.members.add(profile)
-                }
-            })
+            if self.members.count < self.chat.members.count{
+                contains = false
+            }
+            if !contains{
+                FirebaseHelper.ref.child("users").child(snapshot.value as! String).observeSingleEvent(of:.value, with: { (snapshot2) in
+                    if let dictionary = snapshot2.value as? [String:AnyObject]{
+                        var friends = NSMutableArray()
+                        var chats = NSMutableArray()
+                        if dictionary.keys.contains("friends"){friends = dictionary["friends"] as! NSMutableArray}
+                        if dictionary.keys.contains("chats"){chats = dictionary["chats"] as! NSMutableArray}
+                        let profile = Profile(username: dictionary["username"] as! String, userId: snapshot.value as! String, friends: friends, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
+                        self.members.add(profile)
+                    }
+                })
+            }
         }
     }
     
     func fetchPosts(chatId:String) {
         FirebaseHelper.ref.child("chats").child(chatId).child("posts").observe(.childAdded) { (snapshot) in
-            FirebaseHelper.ref.child("chats").child(chatId).child("posts").observe(.value, with: { (postsCount) in
+            FirebaseHelper.ref.child("chats").child(chatId).child("posts").observeSingleEvent(of:.value, with: { (postsCount) in
                 if let posts = postsCount.value as? NSDictionary{
                     self.postAmount = posts.allKeys.count
                 }
-//                if self.postAmount > self.chat.posts.count{
+                if self.postAmount > self.chat.posts.count{
+                    self.menuButton.isEnabled = false
                     if let postValues = snapshot.value as? [String:AnyObject]{
                         var text = ""
                         var image = ""
                         var place:AnyObject!
                         var foundPlace = false
-                        var foundImage = false
                         var increasedBool = false
                         var post:Post!
                         //                                                    var poll:Poll
                         if postValues.keys.contains("text"){text = postValues["text"] as! String}
                         if postValues.keys.contains("image"){
-                            let index = self.chat.posts.count
-                            foundImage = true
-                            FirebaseHelper.storageRef.child("images/\(postValues["image"] as! String).jpeg").getData(maxSize: 50*(1024*1024), completion: { (data, err) in
-                                if let error = err{
-                                    print("couldn't download image")
-                                    return
-                                }
-                                image = (data?.base64EncodedString())!
-                                post = Post(chatId: self.chat.id, text: text, image: image, profileId: postValues["profileId"] as! String, timestamp: postValues["timestamp"] as! String, datestamp: postValues["datestamp"] as! String, place: place)
-                                if !self.chat.posts.contains(post){
-                                    self.chat.posts.remove(index)
-                                    self.chat.posts.insert(post, at: index+1)
-                                    self.chatView.reloadData()
-                                }
+                            image = postValues["image"] as! String
+                            
 
-                            })
                         }
                         
                         if postValues.keys.contains("place"){
-                            foundPlace = true
                             let placeId = postValues["place"] as! String
                             let index = self.chat.posts.count
                             FirebaseHelper.placesClient.lookUpPlaceID(placeId, callback: { (placeSnap, err) in
@@ -214,7 +247,11 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                                 post = Post(chatId: self.chat.id, text: text , image: image, profileId: postValues["profileId"] as! String, timestamp: postValues["timestamp"] as! String, datestamp: postValues["datestamp"] as! String, place: place)
                                 if !self.chat.posts.contains(post){
                                     self.chat.posts.insert(post, at: index)
-                                    self.chatView.reloadData()
+                                    self.chatView.reloadData(){
+                                        if self.selectionView.frame.origin.x == 0{
+                                            self.moveMenu()
+                                        }
+                                    }
                                 }
                             })
                             
@@ -245,30 +282,65 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                         }
                     }
                     if self.postAmount == self.chat.posts.count{
-                        self.chatView.reloadData()
+                        self.chatView.reloadData(){
+                            if self.selectionView.frame.origin.x == 0{
+                                self.moveMenu()
+                            }
+                            self.menuButton.isEnabled = true
+                        }
+                        let indexPath = IndexPath(row: (self.sections.object(at: self.sections.count-1) as! section).amt-1, section: self.sections.count-1)
+                        self.chatView.scrollToRow(at: indexPath, at: .bottom, animated: true)
                     }
-//                }
+                }
             })
             
         }
         
     }
     
+    
+    
+    
     //MARK: Keyboard Updaters
     
     @objc func keyboardWillShow(notification:NSNotification){
-        let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
-        let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
-        UIView.animate(withDuration: keyboardDuration, animations: {
-            self.sendingView.frame.origin.y = keyboardFrame.origin.y-self.sendingView.frame.size.height
-        })
+        if let viewController =  self.navigationController?.topViewController as? ChatViewController{
+            canDismiss = false
+            let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
+            let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
+            self.chatView.frame.size.height = self.chatView.frame.size.height-keyboardFrame.size.height
+            if sections.count > 0{
+                let indexPath = IndexPath(row: (self.sections.object(at: self.sections.count-1) as! section).amt-1, section: self.sections.count-1)
+                self.chatView.scrollToRow(at: indexPath, at: .bottom, animated: false)
+            }
+//            delay(0.001){
+                UIView.animate(withDuration: keyboardDuration, animations: {
+                    self.sendingView.frame.origin.y = keyboardFrame.origin.y-self.sendingView.frame.size.height
+                }, completion: { (true) in
+                    delay(0.5){
+                        self.canDismiss = true
+                        self.keyboardUp = true
+                    }
+                })
+                self.textView.isEditable = true
+//            }
+        }
     }
     
     @objc func keyboardWillHide(notification:NSNotification){
-        let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
-        
-        UIView.animate(withDuration: keyboardDuration) {
-            self.sendingView.frame.origin.y = self.view.frame.size.height-self.sendingView.frame.size.height
+        if let viewController =  self.navigationController?.topViewController as? ChatViewController{
+            if canDismiss{
+                keyboardUp = false
+                let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
+                let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
+                self.chatView.frame.size.height = self.chatView.frame.size.height+keyboardFrame.size.height
+                UIView.animate(withDuration: keyboardDuration, animations: {
+                    self.sendingView.frame.origin.y = self.view.frame.size.height-self.sendingView.frame.size.height
+                }, completion: { (true) in
+                    self.canDismiss = true
+                    self.textView.isEditable = true
+                })
+            }
         }
     }
     
@@ -276,9 +348,8 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     
     @objc func imageTapped(sender:UIButton){
         let post = self.chat.posts.object(at: sender.tag) as! Post
-        let data = Data(base64Encoded: post.image, options: .ignoreUnknownCharacters)!
-        let image = UIImage(data: data)!
-        displayImageView.setImage(image: image)
+        displayImageView.imageView.loadImageUsingCacheWithUrlString(post.image)
+        displayImageView.setImage(image: displayImageView.imageView.image!)
         displayImageView.appear()
     }
     
@@ -287,7 +358,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             let imagePicker = UIImagePickerController()
             imagePicker.delegate = self
             imagePicker.sourceType = .photoLibrary
-            imagePicker.allowsEditing = true
             self.present(imagePicker, animated: true, completion: nil)
         }
     }
@@ -299,7 +369,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
         dismiss(animated:true, completion: nil)
         
-        let image = info[UIImagePickerControllerEditedImage] as! UIImage
+        let image = info[UIImagePickerControllerOriginalImage] as! UIImage
         if let data = UIImageJPEGRepresentation(image, 0.8){
             let id = NSUUID().uuidString
             FirebaseHelper.storageRef.child("images/\(id).jpeg").putData(data, metadata: nil, completion: { (metadata, err) in
@@ -316,6 +386,8 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                 formatter.dateFormat = "yyyy-MM-dd"
                 let dateString = formatter.string(from: now)
                 
+//                self.chat.posts.removeAllObjects()
+//                self.sections.removeAllObjects()
                 
                 let ref = FirebaseHelper.ref.child("chats").child(self.chat.id).child("posts")
                 let childRef = ref.childByAutoId()
@@ -325,43 +397,50 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         }
     }
     
+    func moveChatViews() {
+        self.menuBar.frame.origin = CGPoint(x: self.view.frame.size.width/4*3, y: 0)
+        self.joinChatLabel.frame.origin.x = self.view.frame.size.width/4*3
+        self.textView.frame.origin.x = self.view.frame.size.width/4*3
+        self.chatView.frame.origin.x = self.view.frame.size.width/4*3
+        self.sendingView.frame.origin.x = self.view.frame.size.width/4*3
+    }
+    
     @IBAction func menuButtonTapped(_ sender: Any) {
         //display/hide side bar
-        UIView.animate(withDuration: 0.25) {
+        self.textView.endEditing(true)
+        moveMenu()
+    }
+    
+    func moveMenu() {
+//        UIView.animate(withDuration: 0.25) {
             if self.selectionView.frame.origin == CGPoint(x: 0, y: 0){
                 self.statusBarHidden = false
-                self.selectionView.frame.origin = CGPoint(x: -self.view.frame.size.width/2, y: 0)
+                self.selectionView.frame.origin = CGPoint(x: -self.view.frame.size.width/4*3, y: 0)
                 self.menuBar.frame.origin = CGPoint(x: 0, y: 0)
-                self.joinChatLabel.frame.origin.x -= self.view.frame.size.width/2
-                self.sendButton.frame.origin.x -= self.view.frame.size.width/2
-                self.textView.frame.origin.x -= self.view.frame.size.width/2
-                self.chatView.frame.origin.x -= self.view.frame.size.width/2
-                self.imageButton.frame.origin.x -= self.view.frame.size.width/2
+                self.joinChatLabel.frame.origin.x = 0
+                self.chatView.frame.origin.x = 0
+                self.sendingView.frame.origin.x = 0
+                self.textView.isEditable = true
             }else{
                 self.statusBarHidden = true
                 self.selectionView.frame.origin = CGPoint(x: 0, y: 0)
-                self.menuBar.frame.origin = CGPoint(x: self.view.frame.size.width/2, y: 0)
-                self.joinChatLabel.frame.origin.x += self.view.frame.size.width/2
-                self.sendButton.frame.origin.x += self.view.frame.size.width/2
-                self.textView.frame.origin.x += self.view.frame.size.width/2
-                self.chatView.frame.origin.x += self.view.frame.size.width/2
-                self.imageButton.frame.origin.x += self.view.frame.size.width/2
+                self.menuBar.frame.origin = CGPoint(x: self.view.frame.size.width/4*3, y: 0)
+                self.joinChatLabel.frame.origin.x = self.view.frame.size.width/4*3
+                self.chatView.frame.origin.x = self.view.frame.size.width/4*3
+                self.sendingView.frame.origin.x = self.view.frame.size.width/4*3
+                self.textView.isEditable = false
             }
-        }
+//        }
     }
     
     override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation{
-        return .fade
+        return .slide
     }
     
     override var prefersStatusBarHidden: Bool{
         return statusBarHidden
     }
-    
-    override var preferredStatusBarStyle: UIStatusBarStyle{
-        return .lightContent
-    }
-    
+
     @objc func chatTapped(sender:UIButton){
         //change chats
         settingsButton.alpha = 1
@@ -375,17 +454,8 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             fetchPosts(chatId: chat.id)
             chatView.reloadData()
         }
-        UIView.animate(withDuration: 0.25) {
-            if self.selectionView.frame.origin == CGPoint(x: 0, y: 0){
-                self.statusBarHidden = false
-                self.selectionView.frame.origin = CGPoint(x: -self.view.frame.size.width/2, y: 0)
-                self.menuBar.frame.origin = CGPoint(x: 0, y: 0)
-                self.joinChatLabel.frame.origin.x -= self.view.frame.size.width/2
-                self.sendButton.frame.origin.x -= self.view.frame.size.width/2
-                self.textView.frame.origin.x -= self.view.frame.size.width/2
-                self.chatView.frame.origin.x -= self.view.frame.size.width/2
-            }
-        }
+        StoreViewed.sharedInstance.addViewed(id: chat.id)
+        moveMenu()
     }
     
     @IBAction func sendTapped(_ sender: Any) {
@@ -399,6 +469,8 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             formatter.dateFormat = "yyyy-MM-dd"
             let dateString = formatter.string(from: now)
             
+//            sections.removeAllObjects()
+//            self.chat.posts.removeAllObjects()
             
             let ref = FirebaseHelper.ref.child("chats").child(chat.id).child("posts")
             let childRef = ref.childByAutoId()
@@ -407,8 +479,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             
             textView.text = ""
             textView.endEditing(true)
-            textView.frame.size.height = (textView.font?.lineHeight)!
-            sendingView.frame.size.height = (textView.font?.lineHeight)!
         }
     }
     
@@ -432,9 +502,13 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         self.navigationController?.pushViewController(vc, animated: true)
         
     }
-    @objc func moveToAddViewController(){
+    @objc func moveToAddViewController(sender:UIButton){
         let vc = self.storyboard?.instantiateViewController(withIdentifier: "AddViewController") as! AddViewController
-        vc.isFriends = false
+        if sender.tag == 0{
+            vc.isFriends = false
+        }else{
+            vc.isFriends = true
+        }
         self.navigationController?.pushViewController(vc, animated: true)
     }
     
@@ -470,30 +544,88 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         let numLines = floor(textView.contentSize.height/(textView.font?.lineHeight)!)
         let prevLines = floor(textView.frame.size.height/(textView.font?.lineHeight)!)
         if numLines > prevLines{
-            sendingView.frame.size.height += (textView.font?.lineHeight)!*CGFloat(numLines-prevLines)
-            sendingView.frame.origin.y -= (textView.font?.lineHeight)!*CGFloat(numLines-prevLines)
-            imageButton.frame.origin.y += (textView.font?.lineHeight)!*CGFloat(numLines-prevLines)
-            sendButton.frame.origin.y += (textView.font?.lineHeight)!*CGFloat(numLines-prevLines)
-            let rect = CGRect(origin: self.textView.frame.origin, size: CGSize(width: self.textView.frame.size.width, height: sendingView.frame.size.height))
-            self.textView.frame = rect
+            changingLines = true
+            let size = textView.sizeThatFits(CGSize(width: textView.frame.size.width, height: CGFloat(MAXFLOAT)))
+            sendingView.frame.origin.y += sendingView.frame.size.height-size.height
+            sendingView.frame.size.height = size.height
+            let rect = CGRect(origin: CGPoint(x:self.textView.frame.origin.x, y:0), size: size)
+            self.textView.frame.size.height = rect.size.height
+            self.textView.contentSize.height = rect.size.height
+            textView.centerVertically()
+            canDismiss = false
+            self.chatView.frame.size.height += sendingView.frame.size.height-size.height
+            self.canDismiss = true
+            delay(1){
+                self.changingLines = false
+            }
         }else if numLines < prevLines{
-            sendingView.frame.size.height -= (textView.font?.lineHeight)!*CGFloat(numLines-prevLines)
-            sendingView.frame.origin.y += (textView.font?.lineHeight)!*CGFloat(numLines-prevLines)
-            imageButton.frame.origin.y -= (textView.font?.lineHeight)!*CGFloat(numLines-prevLines)
-            sendButton.frame.origin.y -= (textView.font?.lineHeight)!*CGFloat(numLines-prevLines)
-            let rect = CGRect(origin: self.textView.frame.origin, size: CGSize(width: self.textView.frame.size.width, height: sendingView.frame.size.height))
-            self.textView.frame = rect
+            changingLines = true
+            let size = textView.sizeThatFits(CGSize(width: textView.frame.size.width, height: CGFloat(MAXFLOAT)))
+            sendingView.frame.origin.y += sendingView.frame.size.height-size.height
+            sendingView.frame.size.height = size.height
+            let rect = CGRect(origin: CGPoint(x:self.textView.frame.origin.x, y:0), size: size)
+            self.textView.frame.size.height = rect.size.height
+            self.textView.contentSize.height = rect.size.height
+            textView.centerVertically()
+            canDismiss = false
+            self.chatView.frame.size.height += sendingView.frame.size.height-size.height
+            self.canDismiss = true
+            delay(1){
+                self.changingLines = false
+            }
         }
+
     }
     
     
+    
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        if selectionView.frame.origin.x == 0{
+            moveMenu()
+        }
+    }
+    
     //MARK: TableView methods
+    
+    @objc func tableViewTapped(){
+        if canDismiss && keyboardUp{
+            dismissKeyboard()
+        }else if selectionView.frame.origin.x == 0{
+            moveMenu()
+        }
+    }
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        if canDismiss && !changingLines && round(textView.frame.size.height) == round(textView.contentSize.height){
+            if keyboardUp == false{
+                textView.isEditable = false
+                return
+            }
+            
+            self.dismissKeyboard()
+            textView.isEditable = true
+        }else{
+//            canDismiss = false
+        }
+    }
+    
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        textView.isEditable = true
+    }
+    
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        textView.isEditable = true
+    }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return (sections.object(at: section) as! section).amt
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        if self.selectionView.frame.origin.x == 0{
+            moveChatViews()
+        }
+
         let cell = ChatMessageCell(style: .default, reuseIdentifier: "cell")
         var startIndex = 0
         cell.backgroundColor = .clear
@@ -512,9 +644,9 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             if post.image == ""{
                 cell.bubbleWidthAnchor?.constant = estimateFrameForText(cell.textView.text!).width + 32
             }else{
-                let data = Data(base64Encoded: post.image, options: .ignoreUnknownCharacters)!
-                let image = UIImage(data: data)!
-                cell.bubbleWidthAnchor?.constant = sizeForImage(image: image).width+32
+                loadImageUsingUrlString(post.image, image: { (success) in
+                    cell.bubbleWidthAnchor?.constant = self.sizeForImage(image: success).width+32
+                })
             }
         }
         return cell
@@ -522,6 +654,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         var startIndex = 0
+        var returnAmt:CGFloat = 0
         for var i in 0..<indexPath.section{
             startIndex += (sections.object(at: i) as! section).amt!
         }
@@ -529,10 +662,11 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         if post.image == ""{
             return estimateFrameForText(post.text).height+26
         }else{
-            let data = Data(base64Encoded: post.image, options: .ignoreUnknownCharacters)!
-            let image = UIImage(data: data)!
-            return sizeForImage(image: image).width+26
+            loadImageUsingUrlString(post.image, image: { (success) in
+                returnAmt = (self.sizeForImage(image: success).height)+26
+            })
         }
+        return returnAmt
     }
     
 
@@ -551,7 +685,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         label.textColor = .black
         label.frame = CGRect(x: 0, y: 0, width: tableView.frame.size.width, height: 50)
         label.textColor = lightGray
-        label.font = UIFont(name: "Raleway-Thin", size: 12)
+        label.font = UIFont(name: "Raleway", size: 12)
         label.text = "\(month) \(separatedDate[2]), \(separatedDate[0])"
         label.textAlignment = .center
         return label
@@ -570,9 +704,10 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         }
 
         if post.image != ""{
-            let data = Data(base64Encoded: post.image, options: .ignoreUnknownCharacters)!
-            let image = UIImage(data: data)!
-            cell.messageImageView.image = image
+//            let data = Data(base64Encoded: post.image, options: .ignoreUnknownCharacters)!
+//            let image = UIImage(data: data)!
+            
+            cell.messageImageView.loadImageUsingCacheWithUrlString(post.image)
             cell.button.frame.size = (cell.imageView?.frame.size)!
             cell.button.tag = index
             cell.button.addTarget(self, action: #selector(imageTapped(sender:)), for: .touchUpInside)
@@ -580,7 +715,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         
         if post.profileId == FirebaseHelper.personal.userId {
             //outgoing blue
-            cell.bubbleView.backgroundColor = ChatMessageCell.blueColor
+            cell.bubbleView.backgroundColor = darkBgColor
             cell.textView.textColor = UIColor.white
             cell.profileImageView.isHidden = true
 
@@ -613,5 +748,18 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     fileprivate func sizeForImage(image:UIImage) -> CGSize{
         let scale = chatView.frame.size.width/3/image.size.width
         return CGSize(width: image.size.width*scale, height: image.size.height*scale)
+    }
+}
+
+extension ChatViewController: UIViewControllerTransitioningDelegate {
+    
+    func animationController(forPresented presented: UIViewController, presenting: UIViewController, source: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+        presentationAnimator.mode = .presentation
+        return presentationAnimator
+    }
+    
+    func animationController(forDismissed dismissed: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+        presentationAnimator.mode = .dismissal
+        return presentationAnimator
     }
 }

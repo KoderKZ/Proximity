@@ -9,11 +9,13 @@
 import Foundation
 import UIKit
 class SelectionView:UIView,UITableViewDataSource,UITableViewDelegate{
-    var background:UIImageView!
+    var background:UIView!
     var selfButton:UIButton!
     var tableView:UITableView!
     var joinChatButton:UIButton!
     var addFriendButton:UIButton!
+    
+    
     override init(frame:CGRect) {
         super.init(frame: frame)
     }
@@ -24,8 +26,9 @@ class SelectionView:UIView,UITableViewDataSource,UITableViewDelegate{
     
     func setUpLabels(cellHeight:CGFloat) {
         //set up all of the labels/buttons
-        background = UIImageView(image: UIImage(named: "menubackground"))
+        background = UIView()
         background.frame = CGRect(x: 0, y: 0, width: self.frame.size.width, height: self.frame.size.height)
+        background.backgroundColor = lightGray
         let border = CALayer()
         border.frame = CGRect(x: background.frame.size.width, y: 0, width: 1, height: self.frame.size.height)
         border.backgroundColor = UIColor.black.cgColor
@@ -33,15 +36,18 @@ class SelectionView:UIView,UITableViewDataSource,UITableViewDelegate{
         background.isUserInteractionEnabled = true
         addSubview(background)
         
-        tableView = UITableView(frame: CGRect(x: 0, y: 0, width: background.frame.size.width, height: background.frame.size.height))
+        tableView = UITableView(frame: CGRect(x: 0, y: 0, width: background.frame.size.width, height: background.frame.size.height), style: .grouped)
         tableView.dataSource = self
         tableView.delegate = self
         tableView.allowsSelection = false
+        tableView.backgroundColor = .white
+        tableView.bounces = false
         tableView.reloadData()
         background.addSubview(tableView)
         
         selfButton = UIButton(frame: CGRect(x: 0, y: background.frame.size.height-cellHeight, width: background.frame.size.width, height: cellHeight))
         selfButton.setTitle("                    "+FirebaseHelper.personal.username, for: .normal)
+        selfButton.backgroundColor = .white
         selfButton.setTitleColor(.black, for: .normal)
         selfButton.contentHorizontalAlignment = .left
         selfButton.titleLabel?.font = UIFont(name: "Raleway", size: UIFont.systemFontSize)
@@ -63,6 +69,7 @@ class SelectionView:UIView,UITableViewDataSource,UITableViewDelegate{
         border2.frame = CGRect(x: 0, y: 0, width: selfButton.frame.size.width, height: 1)
         border2.backgroundColor = UIColor.black.cgColor
         selfButton.layer.addSublayer(border2)
+        
     }
     
     
@@ -89,8 +96,18 @@ class SelectionView:UIView,UITableViewDataSource,UITableViewDelegate{
                 joinChatButton.backgroundColor = .clear
                 cell.contentView.addSubview(joinChatButton)
             }else{
-                cell.textLabel?.text = (FirebaseHelper.personal.chats.object(at: indexPath.row) as! Chat).chatName
                 cell.contentView.addSubview(button)
+                let amt = StoreViewed.sharedInstance.getNotViewed(id: (FirebaseHelper.personal.chats.object(at: indexPath.row) as! Chat).id)
+                if amt != 0{
+                    let notCircle = UILabel()
+                    notCircle.frame = CGRect(x: cell.frame.size.width-50, y: cell.frame.size.height/2-notCircle.frame.size.height/2, width: 25, height: 25)
+                    notCircle.backgroundColor = .red
+                    notCircle.text = "\(amt)"
+                    notCircle.layer.cornerRadius = notCircle.frame.size.width/2
+                    notCircle.layer.masksToBounds = true
+                    cell.contentView.addSubview(notCircle)
+                }
+                cell.textLabel?.text = (FirebaseHelper.personal.chats.object(at: indexPath.row) as! Chat).chatName
             }
             
         }else{
@@ -100,7 +117,7 @@ class SelectionView:UIView,UITableViewDataSource,UITableViewDelegate{
                 addFriendButton.backgroundColor = .clear
                 cell.contentView.addSubview(addFriendButton)
             }else{
-                button.setTitle("                    "+(FirebaseHelper.personal.friends.object(at: indexPath.row) as! Profile).username, for: .normal)
+                button.setTitle("                        "+(FirebaseHelper.personal.friends.object(at: indexPath.row) as! Profile).username, for: .normal)
                 button.contentHorizontalAlignment = .left
                 button.contentVerticalAlignment = .center
                 button.backgroundColor = .white
@@ -109,7 +126,7 @@ class SelectionView:UIView,UITableViewDataSource,UITableViewDelegate{
                 
                 let imageData = NSData(base64Encoded: (FirebaseHelper.personal.friends.object(at: indexPath.row) as! Profile).icon , options: .ignoreUnknownCharacters)
                 let imageView = UIImageView(image: UIImage(data: imageData! as Data))
-                imageView.frame = CGRect(x: 5, y: 5, width: 50, height: 50)
+                imageView.frame = CGRect(x: 10, y: 5, width: 50, height: 50)
                 imageView.layer.cornerRadius = imageView.frame.size.width/2
                 imageView.layer.masksToBounds = true
                 cell.contentView.addSubview(imageView)
@@ -118,6 +135,8 @@ class SelectionView:UIView,UITableViewDataSource,UITableViewDelegate{
         
         return cell
     }
+    
+    
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 60
@@ -129,14 +148,26 @@ class SelectionView:UIView,UITableViewDataSource,UITableViewDelegate{
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        let label = UILabel(frame: CGRect(x: 5, y: 5, width: 60, height: 60))
+        let view = UIView()
+        view.frame = CGRect(x: 0, y: 0, width: tableView.frame.size.width, height: 60)
+        let label = UILabel(frame: CGRect(x: 5, y: 5, width: tableView.frame.size.width, height: 60))
+        label.font = UIFont(name: "Arial", size: UIFont.systemFontSize+10)
+        label.textColor = .black
         if section == 0{
-            label.text = "Chats"
+            label.text = "  Chats"
         }else{
-            label.text = "Friends"
+            label.text = "  Friends"
+            
         }
-        label.backgroundColor = .white
-        return label
+        
+        let border = CALayer()
+        border.frame = CGRect(x: 0, y: view.frame.size.height, width: view.frame.size.width, height: 2)
+        border.backgroundColor = UIColor.black.cgColor
+        view.layer.addSublayer(border)
+        
+        view.addSubview(label)
+        label.backgroundColor = .clear
+        return view
     }
     
     func numberOfSections(in tableView: UITableView) -> Int {

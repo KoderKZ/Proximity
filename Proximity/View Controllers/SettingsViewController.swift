@@ -19,6 +19,7 @@ class SettingsViewController: UIViewController,UITableViewDelegate,UITableViewDa
     var addTable:UITableView!
     var members:NSMutableArray!
     var chatViewController:ChatViewController!
+    var addArray = NSMutableArray()
     override func viewDidLoad() {
         chatViewController = self.navigationController?.viewControllers[(navigationController?.viewControllers.count)!-2] as! ChatViewController
         //sync to saved settings of chat
@@ -26,14 +27,24 @@ class SettingsViewController: UIViewController,UITableViewDelegate,UITableViewDa
         members = chatViewController.members
         //set up views
 
-        
+        for var i in 0..<members.count{
+            var isIn = false
+            for var j in 0..<FirebaseHelper.personal.friends.count{
+                if (members[i] as! Profile).userId == (FirebaseHelper.personal.friends[j] as! Profile).userId{
+                    isIn = true
+                }
+            }
+            if (members[i] as! Profile).userId == FirebaseHelper.personal.userId{
+                isIn = true
+            }
+            if !isIn{
+                addArray.add(members[i])
+            }
+        }
         
         backButton.adjustsImageWhenHighlighted = false
         
-        let border = CALayer()
-        border.frame = CGRect(x: self.view.frame.size.width/6, y: titleBar.frame.size.height, width: self.view.frame.size.width*2/3, height: 1)
-        border.backgroundColor = UIColor.black.cgColor
-        titleBar.layer.addSublayer(border)
+        titleBar.setGradientBackground(colorOne: .white, colorTwo: lightBgColor)
         
         chatNameTextField.text = chatViewController.chat.chatName
         let border2 = CALayer()
@@ -43,12 +54,16 @@ class SettingsViewController: UIViewController,UITableViewDelegate,UITableViewDa
         
         chatNameTextField.delegate = self
         
-        membersTable = UITableView(frame: CGRect(x: joinTypeSegment.frame.origin.x, y: joinTypeSegment.frame.origin.y+joinTypeSegment.frame.size.height*1.5, width: self.view.frame.size.width-(joinTypeSegment.frame.origin.x*2), height: addMembersButton.frame.origin.y-joinTypeSegment.frame.origin.y))
+        membersTable = UITableView(frame: CGRect(x: joinTypeSegment.frame.origin.x, y: joinTypeSegment.frame.origin.y+joinTypeSegment.frame.size.height*2, width: self.view.frame.size.width-(joinTypeSegment.frame.origin.x*2), height: addMembersButton.frame.origin.y-joinTypeSegment.frame.origin.y-25), style: .grouped)
+        membersTable.backgroundColor = .clear
+        membersTable.bounces = false
         membersTable.dataSource = self
         membersTable.delegate = self
         self.view.addSubview(membersTable)
         
-        addTable = UITableView(frame: CGRect(x: joinTypeSegment.frame.origin.x, y: joinTypeSegment.frame.origin.y+joinTypeSegment.frame.size.height*1.5, width: self.view.frame.size.width-(joinTypeSegment.frame.origin.x*2), height: addMembersButton.frame.origin.y-joinTypeSegment.frame.origin.y))
+        addTable = UITableView(frame: CGRect(x: joinTypeSegment.frame.origin.x, y: joinTypeSegment.frame.origin.y+joinTypeSegment.frame.size.height*2, width: self.view.frame.size.width-(joinTypeSegment.frame.origin.x*2), height: addMembersButton.frame.origin.y-joinTypeSegment.frame.origin.y-25), style: .grouped)
+        addTable.backgroundColor = .clear
+        addTable.bounces = false
         addTable.dataSource = self
         addTable.delegate = self
         self.view.addSubview(addTable)
@@ -57,20 +72,58 @@ class SettingsViewController: UIViewController,UITableViewDelegate,UITableViewDa
     }
     
     @IBAction func leaveTapped(_ sender: Any) {
-        FirebaseHelper.personal.chats.remove(chatViewController.chat)
-        let chatArray = NSMutableArray()
-        for var chat in FirebaseHelper.personal.chats{
-            chatArray.add((chat as! Chat).id)
+        var indexChat:Int = 0
+        for var i in 0..<FirebaseHelper.personal.chats.count{
+            if (FirebaseHelper.personal.chats[i] as! Chat).id == self.chatViewController.chat.id{
+                indexChat = i
+            }
+        }
+        var indexMember:Int = 0
+        for var i in 0..<self.chatViewController.chat.members.count{
+            if FirebaseHelper.personal.userId == self.chatViewController.chat.members[i] as! String{
+                indexMember = i
+            }
+        }
+        FirebaseHelper.personal.chats.removeObject(at: indexChat)
+        
+        FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("chats").removeValue()
+        FirebaseHelper.ref.child("chats").child("\(self.chatViewController.chat.id)").child("members").removeValue()
+        
+        FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("chats").observeSingleEvent(of: .value) { (snapshot1) in
+            if let array = snapshot1.value as? NSMutableArray{
+                array.removeObject(at: indexChat)
+                let dict = NSMutableDictionary()
+                for var i in 0..<array.count{
+                    dict.addEntries(from: ["\(i)":array[i]])
+                }
+                snapshot1.ref.updateChildValues(dict as! [AnyHashable:Any])
+                
+            }
+            FirebaseHelper.ref.child("chats").child("\(self.chatViewController.chat.id)").child("members").observeSingleEvent(of: .value) { (snapshot2) in
+                if let array = snapshot2.value as? NSMutableArray{
+                    array.removeObject(at: indexMember)
+                    let dict = NSMutableDictionary()
+                    for var i in 0..<array.count{
+                        dict.addEntries(from: ["\(i)":array[i]])
+                    }
+                    snapshot2.ref.updateChildValues(dict as! [AnyHashable:Any])
+                    self.chatViewController.chat = nil
+                    self.navigationController?.popViewController(animated: true)
+                }else{
+                    self.navigationController?.popViewController(animated: true)
+                }
+            }
         }
         
-        let friendArray = NSMutableArray()
-        for var friend in FirebaseHelper.personal.friends{
-            friendArray.add((friend as! Profile).userId)
-        }
-        let selfProfile = Profile(username: FirebaseHelper.personal.username, userId: FirebaseHelper.personal.userId, friends: friendArray, icon: FirebaseHelper.personal.icon, chats: chatArray, latitude: FirebaseHelper.personal.latitude, longitude: FirebaseHelper.personal.longitude)
-        FirebaseHelper.ref.child("chats").child("members").child("\(chatViewController.chat.members.index(of: selfProfile))").removeValue()
-        FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("chats").child("\(FirebaseHelper.personal.chats.index(of: chatViewController.chat))").removeValue()
-        self.navigationController?.popViewController(animated: true)
+//        FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("chats").child("\(indexMember)").removeValue { (err1, ref) in
+//            if let error1 = err1{return}
+//            FirebaseHelper.ref.child("chats").child("\(self.chatViewController.chat.id)").child("members").child("\(indexChat)").removeValue { (err2, ref2) in
+//                if let error2 = err2{return}
+//                self.chatViewController.chat = nil
+//                self.navigationController?.popViewController(animated: true)
+//            }
+//        }
+
     }
     
     @IBAction func addMembersTapped(_ sender: Any) {
@@ -91,7 +144,11 @@ class SettingsViewController: UIViewController,UITableViewDelegate,UITableViewDa
     
     @IBAction func backButtonTapped(_ sender: Any) {
         //go back to chat view controller
-        chatViewController.chat = Chat(id: chatViewController.chat.id, chatName: chatNameTextField.text!, joinType: joinTypeSegment.selectedSegmentIndex, members: members, posts:chatViewController.chat.posts)
+        let membersArray = NSMutableArray()
+        for var i in members{
+            membersArray.add((i as! Profile).userId)
+        }
+        chatViewController.chat = Chat(id: chatViewController.chat.id, chatName: chatNameTextField.text!, joinType: joinTypeSegment.selectedSegmentIndex, members: membersArray, posts:chatViewController.chat.posts)
         self.navigationController?.popViewController(animated: true)
     }
     

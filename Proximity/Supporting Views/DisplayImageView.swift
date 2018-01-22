@@ -21,7 +21,6 @@ class DisplayImageView:UIView{
     }
     
     func setImage(image:UIImage) {
-        imageView.image = image
         imageView.frame.size = sizeForImage(image: image)
         imageView.frame.origin = CGPoint(x: self.frame.size.width/2-imageView.frame.size.width/2, y: self.frame.size.height/2-imageView.frame.size.height/2)
         imageView.layer.masksToBounds = true

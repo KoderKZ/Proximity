@@ -11,4 +11,5 @@ target ‘Proximity’ do
     pod 'GooglePlacePicker'
     pod 'GoogleMaps'
     pod 'Fuse'
+    pod 'SwiftGifOrigin', '~> 1.6.1'
 end

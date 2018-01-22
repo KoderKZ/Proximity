@@ -55,7 +55,16 @@ class CreateChatViewController:UIViewController,UITableViewDataSource,UITableVie
             usersRef.updateChildValues(["members":membersIds])
             FirebaseHelper.personal.chats.add(chat)
             FirebaseHelper.updatePersonal()
-            FirebaseHelper.ref.child("chatNames").updateChildValues([chat.chatName:chat.id])
+            FirebaseHelper.ref.child("chatNames").observeSingleEvent(of: .value, with: { (snapshot) in
+                if let array = snapshot.value as? NSMutableArray{
+                    array.add(chat.id)
+                    let dict = NSMutableDictionary()
+                    for var i in 0..<array.count{
+                        dict.addEntries(from: ["\(i)":array[i]])
+                    }
+                    snapshot.ref.updateChildValues(dict as! [AnyHashable:Any])
+                }
+            })
             self.navigationController?.popViewController(animated: true)
         })
         

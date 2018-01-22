@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0A10069D201691A800FA3A1D /* GuillotineMenuTransitionAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A10069C201691A800FA3A1D /* GuillotineMenuTransitionAnimation.swift */; };
 		0A221BF91FAD40C200A5BF8C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A221BF81FAD40C200A5BF8C /* AppDelegate.swift */; };
 		0A221BFE1FAD40C200A5BF8C /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 0A221BFC1FAD40C200A5BF8C /* Main.storyboard */; };
 		0A221C001FAD40C200A5BF8C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0A221BFF1FAD40C200A5BF8C /* Assets.xcassets */; };
@@ -24,7 +25,11 @@
 		0A2B16551FAFDF4B005F8DF6 /* ClassStructs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2B16541FAFDF4B005F8DF6 /* ClassStructs.swift */; };
 		0A2B16571FAFF63D005F8DF6 /* SelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2B16561FAFF63D005F8DF6 /* SelectionView.swift */; };
 		0A308D6D1FCCF43A00A6EF0E /* ForgotPasswordViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A308D6C1FCCF43800A6EF0E /* ForgotPasswordViewController.swift */; };
+		0A3E5285200EC33C002BA2B5 /* StartingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A3E5284200EC33C002BA2B5 /* StartingViewController.swift */; };
 		0A54895C1FD4656E009F4F7D /* ChatMessageCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A54895B1FD4656E009F4F7D /* ChatMessageCell.swift */; };
+		0A5BEC4A2014F52A006AC273 /* BubbleTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5BEC482014F52A006AC273 /* BubbleTransition.swift */; };
+		0A5BEC4B2014F52A006AC273 /* TransitionMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5BEC492014F52A006AC273 /* TransitionMode.swift */; };
+		0A5BEC5320150CDA006AC273 /* spinner.gif in Resources */ = {isa = PBXBuildFile; fileRef = 0A5BEC5220150CDA006AC273 /* spinner.gif */; };
 		0A6CBD301FFE6C420028113D /* DisplayImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A6CBD2F1FFE6C420028113D /* DisplayImageView.swift */; };
 		0A95D4591FE2097F00F657A9 /* PlaceViewerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A95D4581FE2097F00F657A9 /* PlaceViewerViewController.swift */; };
 		0A9EB45D1FBD1349008D2EBD /* Raleway-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0A9EB45B1FBD12A9008D2EBD /* Raleway-Regular.ttf */; };
@@ -67,6 +72,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0A10069C201691A800FA3A1D /* GuillotineMenuTransitionAnimation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GuillotineMenuTransitionAnimation.swift; sourceTree = "<group>"; };
 		0A221BF51FAD40C100A5BF8C /* Proximity.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Proximity.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A221BF81FAD40C200A5BF8C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		0A221BFD1FAD40C200A5BF8C /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
@@ -88,7 +94,11 @@
 		0A2B16541FAFDF4B005F8DF6 /* ClassStructs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassStructs.swift; sourceTree = "<group>"; };
 		0A2B16561FAFF63D005F8DF6 /* SelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectionView.swift; sourceTree = "<group>"; };
 		0A308D6C1FCCF43800A6EF0E /* ForgotPasswordViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgotPasswordViewController.swift; sourceTree = "<group>"; };
+		0A3E5284200EC33C002BA2B5 /* StartingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartingViewController.swift; sourceTree = "<group>"; };
 		0A54895B1FD4656E009F4F7D /* ChatMessageCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessageCell.swift; sourceTree = "<group>"; };
+		0A5BEC482014F52A006AC273 /* BubbleTransition.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BubbleTransition.swift; sourceTree = "<group>"; };
+		0A5BEC492014F52A006AC273 /* TransitionMode.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TransitionMode.swift; sourceTree = "<group>"; };
+		0A5BEC5220150CDA006AC273 /* spinner.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = spinner.gif; sourceTree = "<group>"; };
 		0A6CBD2F1FFE6C420028113D /* DisplayImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayImageView.swift; sourceTree = "<group>"; };
 		0A95D4581FE2097F00F657A9 /* PlaceViewerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceViewerViewController.swift; sourceTree = "<group>"; };
 		0A9EB45A1FBD12A9008D2EBD /* Raleway-Thin.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Raleway-Thin.ttf"; sourceTree = "<group>"; };
@@ -194,6 +204,7 @@
 				0A221C351FAFB99300A5BF8C /* SettingsViewController.swift */,
 				0A221C3B1FAFB9FB00A5BF8C /* ProfileViewController.swift */,
 				0A221C371FAFB9AF00A5BF8C /* AddViewController.swift */,
+				0A3E5284200EC33C002BA2B5 /* StartingViewController.swift */,
 			);
 			path = "View Controllers";
 			sourceTree = "<group>";
@@ -211,6 +222,8 @@
 		0A6CBD2D1FFE6BF10028113D /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				0A5BEC482014F52A006AC273 /* BubbleTransition.swift */,
+				0A5BEC492014F52A006AC273 /* TransitionMode.swift */,
 				0A221BF81FAD40C200A5BF8C /* AppDelegate.swift */,
 				0A2B16521FAFDF12005F8DF6 /* FirebaseHelper.swift */,
 				0A2B16541FAFDF4B005F8DF6 /* ClassStructs.swift */,
@@ -221,6 +234,8 @@
 		0A6CBD2E1FFE6C090028113D /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				0A10069C201691A800FA3A1D /* GuillotineMenuTransitionAnimation.swift */,
+				0A5BEC5220150CDA006AC273 /* spinner.gif */,
 				0AF7545C1FC4F1B90067B4AE /* GoogleService-Info.plist */,
 				0A9EB45B1FBD12A9008D2EBD /* Raleway-Regular.ttf */,
 				0A9EB45C1FBD12AA008D2EBD /* Raleway-SemiBold.ttf */,
@@ -361,6 +376,7 @@
 				0A9EB45D1FBD1349008D2EBD /* Raleway-Regular.ttf in Resources */,
 				0A9EB45E1FBD1349008D2EBD /* Raleway-SemiBold.ttf in Resources */,
 				0A9EB45F1FBD1349008D2EBD /* Raleway-Thin.ttf in Resources */,
+				0A5BEC5320150CDA006AC273 /* spinner.gif in Resources */,
 				0A221C031FAD40C200A5BF8C /* LaunchScreen.storyboard in Resources */,
 				0A221C001FAD40C200A5BF8C /* Assets.xcassets in Resources */,
 				0AF7545D1FC4F1B90067B4AE /* GoogleService-Info.plist in Resources */,
@@ -433,6 +449,7 @@
 				"${BUILT_PRODUCTS_DIR}/Fuse/Fuse.framework",
 				"${BUILT_PRODUCTS_DIR}/GTMSessionFetcher/GTMSessionFetcher.framework",
 				"${BUILT_PRODUCTS_DIR}/GoogleToolboxForMac/GoogleToolboxForMac.framework",
+				"${BUILT_PRODUCTS_DIR}/SwiftGifOrigin/SwiftGifOrigin.framework",
 				"${BUILT_PRODUCTS_DIR}/leveldb-library/leveldb.framework",
 				"${BUILT_PRODUCTS_DIR}/nanopb/nanopb.framework",
 			);
@@ -441,6 +458,7 @@
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Fuse.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GTMSessionFetcher.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GoogleToolboxForMac.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SwiftGifOrigin.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/leveldb.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/nanopb.framework",
 			);
@@ -458,6 +476,9 @@
 			files = (
 				0A221C3C1FAFB9FB00A5BF8C /* ProfileViewController.swift in Sources */,
 				0A2B16531FAFDF12005F8DF6 /* FirebaseHelper.swift in Sources */,
+				0A10069D201691A800FA3A1D /* GuillotineMenuTransitionAnimation.swift in Sources */,
+				0A3E5285200EC33C002BA2B5 /* StartingViewController.swift in Sources */,
+				0A5BEC4A2014F52A006AC273 /* BubbleTransition.swift in Sources */,
 				0A221C321FAFB96F00A5BF8C /* ChatViewController.swift in Sources */,
 				0A6CBD301FFE6C420028113D /* DisplayImageView.swift in Sources */,
 				0A221BF91FAD40C200A5BF8C /* AppDelegate.swift in Sources */,
@@ -469,6 +490,7 @@
 				0A95D4591FE2097F00F657A9 /* PlaceViewerViewController.swift in Sources */,
 				0AF7545F1FC60A910067B4AE /* SignInViewController.swift in Sources */,
 				0A2B16551FAFDF4B005F8DF6 /* ClassStructs.swift in Sources */,
+				0A5BEC4B2014F52A006AC273 /* TransitionMode.swift in Sources */,
 				0A221C3A1FAFB9BA00A5BF8C /* CreateChatViewController.swift in Sources */,
 				0A2B16571FAFF63D005F8DF6 /* SelectionView.swift in Sources */,
 			);

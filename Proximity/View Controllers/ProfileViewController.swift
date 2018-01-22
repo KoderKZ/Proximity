@@ -20,6 +20,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     @IBOutlet weak var usernameLabel: UILabel!
     @IBOutlet weak var profileView: UIView!
     @IBOutlet weak var logoutButton: UIButton!
+    @IBOutlet weak var topView: UIView!
     var inMapView:Bool!
     var regularProfileViewOrigin:CGPoint!
     var regularMapViewHeight:CGFloat!
@@ -42,15 +43,18 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     override func viewDidLoad() {
         inMapView = false
         
-        tableView = UITableView(frame: CGRect(x: usernameLabel.frame.origin.x, y: usernameLabel.frame.origin.y+usernameLabel.frame.size.height, width: self.view.frame.size.width-(usernameLabel.frame.origin.x*2), height: profileView.frame.size.height*5/6))
+        topView.backgroundColor = bgColor
+        
+        tableView = UITableView(frame: CGRect(x: usernameLabel.frame.origin.x, y: topView.frame.origin.y+topView.frame.size.height+10, width: self.view.frame.size.width-(usernameLabel.frame.origin.x*2), height: profileView.frame.size.height*5/6))
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         profileView.addSubview(tableView)
 
         
-        regularProfileViewOrigin = profileView.frame.origin
-        regularMapViewHeight = mapView.frame.size.height
+
+        
+
         
         
         locationManager.delegate = self
@@ -71,6 +75,8 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(true)
+        regularProfileViewOrigin = profileView.frame.origin
+        regularMapViewHeight = mapView.frame.size.height
         if profile != nil{
             if profile.username == FirebaseHelper.personal.username{
                 logoutButton.alpha = 1
@@ -90,7 +96,8 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
-
+        regularProfileViewOrigin = profileView.frame.origin
+        regularMapViewHeight = mapView.frame.size.height
     }
     
     func setProfiles(profile:Profile,profiles:NSMutableArray) {
@@ -101,7 +108,9 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     @IBAction func logoutTapped(_ sender: Any) {
         do{
             try Auth.auth().signOut()
-            self.navigationController?.popToRootViewController(animated: true)
+            
+            let vc = self.navigationController?.viewControllers[1]
+            self.navigationController?.popToViewController(vc!, animated: true)
         }catch{}
     }
     @IBAction func addFriendTapped(_ sender: Any) {
@@ -153,7 +162,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
         var members = NSArray()
         FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("friendRequests").observe(.childAdded) { (snapshot) in
             var contains = false
-            FirebaseHelper.ref.child("users").child(snapshot.value as! String).observe(.value, with: { (snapshot2) in
+            FirebaseHelper.ref.child("users").child(snapshot.value as! String).observeSingleEvent(of: .value, with: { (snapshot2) in
                 if let dictionary = snapshot2.value as? [String:AnyObject]{
                     var friends = NSMutableArray()
                     var chats = NSMutableArray()
@@ -167,7 +176,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     }
     
     func fetchRegionMembers() {
-        regionProfileObserver =  FirebaseHelper.ref.child("locations").child("\(FirebaseHelper.personalRegion.x)").child("\(FirebaseHelper.personalRegion.y)").observe(.value) { (snapshot) in
+        regionProfileObserver = FirebaseHelper.ref.child("locations").child("\(FirebaseHelper.personalRegion.x)").child("\(FirebaseHelper.personalRegion.y)").observe(.value) { (snapshot) in
             if let profiles = snapshot.value as? NSArray{
                     FirebaseHelper.nearbyProfiles.removeAllObjects()
                     FirebaseHelper.nearbyProfiles.addObjects(from: profiles as! [Any])
@@ -178,7 +187,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     
     func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
         for var _profile in profiles{
-            FirebaseHelper.ref.child("users").child(_profile as! String).observe(.value, with: { (prof) in
+            FirebaseHelper.ref.child("users").child(_profile as! String).observeSingleEvent(of: .value, with: { (prof) in
                 if let dictionary = prof.value as? [String:AnyObject]{
                     if dictionary["username"] as! String == marker.title!{
                         let newProf = Profile(username: dictionary["username"] as! String, userId: _profile as! String, friends: dictionary["friends"] as! NSArray, icon: dictionary["icon"] as! String, chats: dictionary["chats"] as! NSArray, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
@@ -223,7 +232,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     
     func makeMarker(array:NSArray){
         for var _profile in array{
-            FirebaseHelper.ref.child("users").child(_profile as! String).observe(.value, with: { (profile) in
+            FirebaseHelper.ref.child("users").child(_profile as! String).observeSingleEvent(of: .value, with: { (profile) in
                 if let dictionary = profile.value as? [String:AnyObject]{
                     
                     let marker = GMSMarker(position: CLLocationCoordinate2DMake(dictionary["latitude"] as! Double, dictionary["longitude"] as! Double))
@@ -243,7 +252,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     
     func mapView(_ mapView: GMSMapView, didTapAt coordinate: CLLocationCoordinate2D) {
         UIView.animate(withDuration: 0.5, animations: {
-            self.profileView.frame.origin = CGPoint(x: 0, y: self.view.frame.size.height-self.usernameLabel.frame.origin.y-self.usernameLabel.frame.size.height)
+            self.profileView.frame.origin = CGPoint(x: 0, y: self.view.frame.size.height-self.topView.frame.size.height)
             self.mapView.frame.size = CGSize(width: self.view.frame.size.width, height: self.profileView.frame.origin.y)
             self.nearbyPlacesButton.frame.origin.y = self.mapView.frame.size.height-self.nearbyPlacesButton.frame.size.height
         })
@@ -296,7 +305,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
                 joinChatButton.addTarget(self, action: #selector(joinChat(sender:)), for: .touchUpInside)
                 cell.contentView.addSubview(joinChatButton)
             }
-            FirebaseHelper.ref.child("chats").child(profile.chats.object(at: indexPath.row) as! String).child("chatName").observe(.value, with: { (name) in
+            FirebaseHelper.ref.child("chats").child(profile.chats.object(at: indexPath.row) as! String).child("chatName").observeSingleEvent(of: .value, with: { (name) in
                 cell.textLabel?.text = name.value as! String
             })
         }else if indexPath.section == 1{
@@ -321,7 +330,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
                 
                 cell.contentView.addSubview(addFriendButton)
             }
-            FirebaseHelper.ref.child("users").child(profile.friends.object(at: indexPath.row) as! String).observe(.value, with: { (profile) in
+            FirebaseHelper.ref.child("users").child(profile.friends.object(at: indexPath.row) as! String).observeSingleEvent(of: .value, with: { (profile) in
                 if let dictionary = profile.value as? [String:AnyObject]{
                     cell.textLabel?.text = "                    "+(dictionary["username"] as! String)
                     let imageData = NSData(base64Encoded: dictionary["icon"] as! String , options: .ignoreUnknownCharacters)
@@ -399,7 +408,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
         if editingStyle == .delete{
             FirebaseHelper.personal.friends.removeObject(at: indexPath.row)
             FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("friends").child("\(indexPath.row)").removeValue()
-            FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("friends").observe(.value, with: { (friends) in
+            FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("friends").observeSingleEvent(of: .value, with: { (friends) in
                 if let array = friends.value as? NSArray{
                     FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("friends").child("\(array.index(of: FirebaseHelper.personal.userId))").removeValue()
                 }
@@ -416,7 +425,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     }
     
     @objc func joinChat(sender:UIButton){
-        FirebaseHelper.ref.child("chats").child("\(profile.chats.object(at: sender.tag))").observe(.value) { (snapshot) in
+        FirebaseHelper.ref.child("chats").child("\(profile.chats.object(at: sender.tag))").observeSingleEvent(of: .value) { (snapshot) in
             if let chat = snapshot.value as? [AnyHashable:Any]{
                 if chat["joinType"] as! Int == 0{
                     FirebaseHelper.ref.child("chats").child("\(self.profile.chats.object(at: sender.tag))").child("members").updateChildValues(["\((chat["members"] as! NSArray).count)":FirebaseHelper.personal.userId])
@@ -442,7 +451,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
         }else{
             _profile = self.profile
         }
-        FirebaseHelper.ref.child("users").child(_profile.userId).observe(.value) { (snapshot) in
+        FirebaseHelper.ref.child("users").child(_profile.userId).observeSingleEvent(of: .value) { (snapshot) in
             if let dict = snapshot.value as? [String:AnyHashable]{
                 var value = [AnyHashable:Any]()
                 if dict.keys.contains("friendRequests"){
@@ -469,7 +478,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
         FirebaseHelper.personal.friends.add(_profile)
         FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("friendRequests").child("\(sender.tag)").removeValue()
         FirebaseHelper.updatePersonal()
-        FirebaseHelper.ref.child("users").child((_profile as! Profile).userId).child("friends").observe(.value, with: { (snapshot) in
+        FirebaseHelper.ref.child("users").child((_profile as! Profile).userId).child("friends").observeSingleEvent(of: .value, with: { (snapshot) in
             var friends = NSMutableArray()
             if let array = snapshot.value as? NSArray{
                 friends = array as! NSMutableArray

@@ -18,6 +18,7 @@ class PlaceViewerViewController:UIViewController,UITableViewDataSource,UITableVi
     @IBOutlet var websiteLabel: UILabel!
     @IBOutlet var ratingLabel: UILabel!
     @IBOutlet var hoursLabel: UILabel!
+    @IBOutlet var infoView: UIView!
     @IBOutlet var sendToView: UIView!
     var tableView:UITableView!
     override func viewDidLoad() {
@@ -67,7 +68,6 @@ class PlaceViewerViewController:UIViewController,UITableViewDataSource,UITableVi
         let ref = FirebaseHelper.ref.child("chats").child(chat.id).child("posts")
         let childRef = ref.childByAutoId()
         let values = ["profileId":FirebaseHelper.personal.userId, "timestamp":timeString, "datestamp":dateString,"place": place.placeID] as [String : Any]
-        print(childRef)
         childRef.updateChildValues(values)
     }
     

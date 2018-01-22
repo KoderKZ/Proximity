@@ -21,51 +21,63 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
     var image:UIImage!
     override func viewDidLoad() {
         self.hideKeyboardWhenTappedAround()
-        self.view.setGradientBackground(colorOne: bgColor, colorTwo: darkGray)
+        self.view.setGradientBackground(colorOne: .white, colorTwo: lightGray)
         usernameTextField.returnKeyType = .done
         usernameTextField.delegate = self
         
         let border1 = CALayer()
         border1.frame = CGRect(x: 0, y: usernameTextField.frame.size.height, width: self.view.frame.size.width-(usernameTextField.frame.origin.x*2), height: 1)
-        border1.backgroundColor = UIColor.white.cgColor
+        border1.backgroundColor = UIColor.black.cgColor
         usernameTextField.layer.addSublayer(border1)
         
         let border2 = CALayer()
         border2.frame = CGRect(x: 0, y: emailTextField.frame.size.height, width: self.view.frame.size.width-(emailTextField.frame.origin.x*2), height: 1)
-        border2.backgroundColor = UIColor.white.cgColor
+        border2.backgroundColor = UIColor.black.cgColor
         emailTextField.layer.addSublayer(border2)
         
         let border3 = CALayer()
         border3.frame = CGRect(x: 0, y: passwordTextField.frame.size.height, width: self.view.frame.size.width-(passwordTextField.frame.origin.x*2), height: 1)
-        border3.backgroundColor = UIColor.white.cgColor
+        border3.backgroundColor = UIColor.black.cgColor
         passwordTextField.layer.addSublayer(border3)
         
         let border4 = CALayer()
         border4.frame = CGRect(x: 0, y: confirmPasswordTextField.frame.size.height, width: self.view.frame.size.width-(confirmPasswordTextField.frame.origin.x*2), height: 1)
-        border4.backgroundColor = UIColor.white.cgColor
+        border4.backgroundColor = UIColor.black.cgColor
         confirmPasswordTextField.layer.addSublayer(border4)
         
         chooseImageButton.backgroundColor = .clear
-        chooseImageButton.layer.cornerRadius = chooseImageButton.frame.size.width/2
+        chooseImageButton.layer.cornerRadius = chooseImageButton.frame.size.height/2
         chooseImageButton.layer.borderWidth = 3
         chooseImageButton.layer.borderColor = UIColor.black.cgColor
         
-        chooseImageButton.setTitleColor(.white, for: .normal)
+        chooseImageButton.setTitleColor(.black, for: .normal)
         chooseImageButton.layer.masksToBounds = true
         
         finishButton.backgroundColor = .clear
-        finishButton.setGradientBackground(colorOne: darkGray, colorTwo: gray)
-        
-        finishButton.setTitleColor(.white, for: .normal)
+        finishButton.setGradientBackground(colorOne: darkGray.withAlphaComponent(0.05), colorTwo: gray.withAlphaComponent(0.05))
+
+        finishButton.setTitleColor(.black, for: .normal)
         finishButton.layer.masksToBounds = true
 
+        
+        usernameTextField.attributedPlaceholder = NSAttributedString(string: "Username",
+                                                               attributes: [NSAttributedStringKey.foregroundColor: UIColor.black])
+        passwordTextField.attributedPlaceholder = NSAttributedString(string: "Password",
+                                                                     attributes: [NSAttributedStringKey.foregroundColor: UIColor.black])
+        emailTextField.attributedPlaceholder = NSAttributedString(string: "Email",
+                                                                     attributes: [NSAttributedStringKey.foregroundColor: UIColor.black])
+        confirmPasswordTextField.attributedPlaceholder = NSAttributedString(string: "Confirm Password",
+                                                                     attributes: [NSAttributedStringKey.foregroundColor: UIColor.black])
 
         
     }
     
+    override func viewWillAppear(_ animated: Bool) {
+        chooseImageButton.frame.size.height = chooseImageButton.frame.size.width
+    }
+    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
-        chooseImageButton.frame.size.height = chooseImageButton.frame.size.width
         if image != nil{
             chooseImageButton.setBackgroundImage(image!, for: .normal)
             chooseImageButton.setTitle("", for: .normal)
@@ -90,7 +102,6 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
         dismiss(animated:true, completion: nil)
         
         let image = info[UIImagePickerControllerEditedImage] as! UIImage
-        print(image.size)
         self.image = image
     }
     @IBAction func backTapped(_ sender: Any) {

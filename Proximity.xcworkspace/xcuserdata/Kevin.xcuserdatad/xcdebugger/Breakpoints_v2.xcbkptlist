@@ -4,35 +4,13 @@
    version = "2.0">
    <Breakpoints>
       <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "Proximity/ChatViewController.swift"
-            timestampString = "536767345.160567"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "247"
-            endingLineNumber = "247"
-            landmarkName = "imageTapped(sender:)"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         BreakpointExtensionID = "Xcode.Breakpoint.ExceptionBreakpoint">
          <BreakpointContent
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "Proximity/View Controllers/AddViewController.swift"
-            timestampString = "536774334.514574"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "70"
-            endingLineNumber = "70"
-            landmarkName = "userAdded()"
-            landmarkType = "7">
+            scope = "0"
+            stopOnStyle = "0">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -41,13 +19,13 @@
             shouldBeEnabled = "Yes"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "Proximity/View Controllers/AddViewController.swift"
-            timestampString = "536774334.514967"
+            filePath = "Proximity/View Controllers/ChatViewController.swift"
+            timestampString = "538265146.449442"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "225"
-            endingLineNumber = "225"
-            landmarkName = "updateSortedNames()"
+            startingLineNumber = "416"
+            endingLineNumber = "416"
+            landmarkName = "moveMenu()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
@@ -58,93 +36,13 @@
             ignoreCount = "0"
             continueAfterRunningActions = "No"
             filePath = "Proximity/View Controllers/ChatViewController.swift"
-            timestampString = "537232052.685832"
+            timestampString = "538265146.450009"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "470"
-            endingLineNumber = "470"
-            landmarkName = "unknown"
-            landmarkType = "0">
-            <Locations>
-               <Location
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "Proximity.ChatViewController.textViewDidChange(__ObjC.UITextView) -&gt; ()"
-                  moduleName = "Proximity"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/Kevin/Desktop/Proximity/Proximity/View%20Controllers/ChatViewController.swift"
-                  timestampString = "537232052.937047"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "470"
-                  endingLineNumber = "470"
-                  offsetFromSymbolStart = "32">
-               </Location>
-               <Location
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "Proximity.ChatViewController.textViewDidChange(__ObjC.UITextView) -&gt; ()"
-                  moduleName = "Proximity"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/Kevin/Desktop/Proximity/Proximity/View%20Controllers/ChatViewController.swift"
-                  timestampString = "537232052.939376"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "470"
-                  endingLineNumber = "470"
-                  offsetFromSymbolStart = "7272">
-               </Location>
-            </Locations>
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            shouldBeEnabled = "Yes"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "Proximity/View Controllers/ChatViewController.swift"
-            timestampString = "537232052.686253"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "93"
-            endingLineNumber = "93"
-            landmarkName = "unknown"
-            landmarkType = "0">
-            <Locations>
-               <Location
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "Proximity.ChatViewController.viewDidLoad() -&gt; ()"
-                  moduleName = "Proximity"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/Kevin/Desktop/Proximity/Proximity/View%20Controllers/ChatViewController.swift"
-                  timestampString = "537232052.944954"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "93"
-                  endingLineNumber = "93"
-                  offsetFromSymbolStart = "10856">
-               </Location>
-               <Location
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "Proximity.ChatViewController.viewDidLoad() -&gt; ()"
-                  moduleName = "Proximity"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/Kevin/Desktop/Proximity/Proximity/View%20Controllers/ChatViewController.swift"
-                  timestampString = "537232052.947492"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "93"
-                  endingLineNumber = "93"
-                  offsetFromSymbolStart = "23240">
-               </Location>
-            </Locations>
+            startingLineNumber = "424"
+            endingLineNumber = "424"
+            landmarkName = "moveMenu()"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

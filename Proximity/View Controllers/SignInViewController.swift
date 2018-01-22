@@ -6,9 +6,11 @@
 //  Copyright © 2017 Kevin Zhou. All rights reserved.
 //
 
+
 import Foundation
 import UIKit
 import FirebaseAuth
+import SwiftGifOrigin
 class SignInViewController:UIViewController{
     @IBOutlet weak var emailTextField: UITextField!
     @IBOutlet weak var passwordTextField: UITextField!
@@ -16,25 +18,25 @@ class SignInViewController:UIViewController{
     @IBOutlet weak var registerButton: UIButton!
     @IBOutlet weak var errorLabel: UILabel!
     @IBOutlet weak var forgotPasswordButton: UIButton!
-    
+    var originalWidth:CGFloat = 0
+    var image = UIImage()
+    var animatingView:UIView!
     override func viewDidLoad() {
         self.view.backgroundColor = .clear
-        self.view.setGradientBackground(colorOne: bgColor, colorTwo: darkGray)
+        self.view.setGradientBackground(colorOne: lightGray, colorTwo: lightBgColor)
         let border = CALayer()
         border.frame = CGRect(x: 0, y: emailTextField.frame.size.height, width: self.view.frame.size.width-(emailTextField.frame.origin.x*2), height: 1)
-        border.backgroundColor = UIColor.white.cgColor
+        border.backgroundColor = UIColor.black.cgColor
         emailTextField.layer.addSublayer(border)
         
         let border2 = CALayer()
         border2.frame = CGRect(x: 0, y: passwordTextField.frame.size.height, width: self.view.frame.size.width-(passwordTextField.frame.origin.x*2), height: 1)
-        border2.backgroundColor = UIColor.white.cgColor
+        border2.backgroundColor = UIColor.black.cgColor
         passwordTextField.layer.addSublayer(border2)
         
-        signInButton.layer.bounds.size = signInButton.frame.size
-        signInButton.backgroundColor = .clear
-        signInButton.setGradientBackground(colorOne: darkGray, colorTwo: gray)
+        signInButton.backgroundColor = bgColor
         
-        signInButton.setTitleColor(.white, for: .normal)
+        signInButton.setTitleColor(.black, for: .normal)
         signInButton.layer.masksToBounds = true
         
         emailTextField.delegate = self
@@ -49,118 +51,77 @@ class SignInViewController:UIViewController{
         errorLabel.alpha = 0
         
         self.hideKeyboardWhenTappedAround()
-        
-    }
-    @IBAction func signInTapped(_ sender: Any) {
-        Auth.auth().signIn(withEmail: emailTextField.text!, password: passwordTextField.text!) { (user, error) in
-            if error != nil{
-                self.errorLabel.text = error?.localizedDescription
-                self.errorLabel.alpha = 1
-                return
-            }
-            let ref = FirebaseHelper.ref.child("users").child((user?.uid)!)
-            //            let chats = ref.child("chats").
-            
-            var icon = ""
-            var username = ""
-            var latitude:Double = 0
-            var longitude:Double = 0
-            let chats = NSMutableArray()
-            let friends = NSMutableArray()
-            let friendRequests = NSMutableArray()
-            let vc = self.storyboard?.instantiateViewController(withIdentifier: "ChatViewController") as! ChatViewController
-            
-            var requiredIconAmt = 0
-            var actualIconAmt = 0
-            var finishedFriends = 0
-            var finishedRequests = 0
-            var actualFriendsAmount = 0
-            var finishedFriendRequests = false
-            ref.observeSingleEvent(of: .value, with: { (snapshot1) in
-                if let dictionary = snapshot1.value as? [String:AnyObject]{
-                    icon = dictionary["icon"] as! String
-                    latitude = dictionary["latitude"] as! Double
-                    longitude = dictionary["longitude"] as! Double
-                    username = dictionary["username"] as! String
-                }
-                ref.child("chats").observeSingleEvent(of: .value, with: { (snapshot2) in
-                    if let array = snapshot2.value as? NSArray{
-                        for var i in array{
-                            FirebaseHelper.ref.child("chats").child(i as! String).observe(.value, with: { (chatSnapshot) in
-                                if let dictionary = chatSnapshot.value as? [String:AnyObject]{
-                                    var chat = Chat(id: i as! String, chatName: dictionary["chatName"] as! String, joinType: dictionary["joinType"] as! Int, members: NSMutableArray(), posts: NSMutableArray())
-                                    if let members = dictionary["members"]{
-                                        chat.members = members as! NSMutableArray
-                                        for var j in chat.members{
-                                            if vc.profileIcons.object(forKey: j as! String) == nil{
-                                                requiredIconAmt += 1
-                                                FirebaseHelper.ref.child("users").child(j as! String).observe(.value, with: { (snapshot) in
-                                                    if let profile = snapshot.value as? [String:AnyObject] {
-                                                        vc.profileIcons.addEntries(from: [(j as! String): profile["icon"]])
-                                                        actualIconAmt += 1
-                                                        if requiredIconAmt == actualIconAmt && finishedRequests == 1 && finishedFriendRequests{
-                                                            self.navigationController?.pushViewController(vc, animated: true)
-                                                        }else if requiredIconAmt == actualIconAmt && finishedRequests == 0{
-                                                            finishedRequests += 1
-                                                        }
-                                                    }
-                                                })
-                                            }
-                                        }
-                                    }
-                                    chats.add(chat)
-                                }
-                            })
-                        }
-                        ref.child("friends").observeSingleEvent(of: .value, with: { (snapshot4) in
-                            if let friendArray = snapshot4.value as? NSArray{
-                                actualFriendsAmount = friendArray.count
-                                for var i in friendArray{
-                                    FirebaseHelper.ref.child("users").child(i as! String).observe(.value, with: { (snapshot) in
-                                        if let dictionary = snapshot.value as? [String:AnyObject]{
-                                            var friends = NSMutableArray()
-                                            var chats = NSMutableArray()
-                                            if dictionary.keys.contains("chats"){chats = dictionary["chats"] as! NSMutableArray}
-                                            var friend = Profile(username: dictionary["username"] as! String, userId: i as! String, friends: friends, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
-                                            friends.add(friend)
-                                            finishedFriends += 1
-                                            if finishedFriends == friendArray.count && finishedRequests == 1 && finishedFriendRequests{
-                                                FirebaseHelper.personal.friends = friends
-                                                self.navigationController?.pushViewController(vc, animated: true)
-                                            }else if finishedFriends == friendArray.count && finishedRequests == 0{
-                                                finishedRequests += 1
-                                            }
-                                        }
-                                    })
-                                }
-                            }else{
-                                finishedRequests += 1
-                            }
 
-                            ref.child("friendRequests").observeSingleEvent(of: .value, with: { (snapshot5) in
-                                if let array = snapshot5.value as? NSArray{
-                                    for var i in array{
-                                        FirebaseHelper.ref.child("users").child(i as! String).observe(.value, with: { (snapshot) in
-                                            if let dictionary = snapshot.value as? [String:AnyObject]{
-                                                var friends = NSMutableArray()
-                                                var chats = NSMutableArray()
-                                                if dictionary.keys.contains("friends"){friends = dictionary["friends"] as! NSMutableArray}
-                                                if dictionary.keys.contains("chats"){chats = dictionary["chats"] as! NSMutableArray}
-                                                var friend = Profile(username: dictionary["username"] as! String, userId: i as! String, friends: friends, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
-                                                friendRequests.add(friend)
-                                            }
-                                        })
-                                    }
-                                }
-                                finishedFriendRequests = true
-                                FirebaseHelper.personal = Personal(username: username, userId: (user?.uid)!, friendRequests: friendRequests, email: self.emailTextField.text!, friends: friends, icon: icon, chats: chats, latitude: latitude, longitude: longitude)
-                                if actualIconAmt == requiredIconAmt{
-                                    self.navigationController?.pushViewController(vc, animated: true)
-                                }
-                            })
-                        })
-                    }
-                })
+        image = UIImage.gif(name: "spinner")!
+        
+        originalWidth = self.view.frame.size.width/5*4
+        signInButton.frame = CGRect(x: self.view.frame.size.width/2-originalWidth/2, y: forgotPasswordButton.frame.origin.y+forgotPasswordButton.frame.size.height+50, width: originalWidth, height: originalWidth/5)
+        signInButton.layer.cornerRadius = signInButton.frame.size.height/2
+        
+        animatingView = UIView(frame: signInButton.frame)
+        animatingView.frame.size.width = animatingView.frame.size.height
+        animatingView.backgroundColor = bgColor
+        animatingView.alpha = 0
+        self.view.addSubview(animatingView)
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(true)
+        self.signInButton.frame.size.width = self.originalWidth
+        self.signInButton.setBackgroundImage(nil, for: .normal)
+        self.signInButton.frame.origin.x = self.view.frame.size.width/2-self.originalWidth/2
+        self.signInButton.setTitleColor(.black, for: .normal)
+        animatingView.alpha = 0
+        animatingView.frame = signInButton.frame
+        
+        animatingView.frame.size.width = animatingView.frame.size.height
+        animatingView.frame.origin.x = self.view.frame.size.width/2-animatingView.frame.size.width/2
+        animatingView.layer.cornerRadius = animatingView.frame.size.width/2
+    }
+    
+    
+    @IBAction func signInTapped(_ sender: Any) {
+        originalWidth = self.signInButton.frame.size.width
+        UIView.animate(withDuration: 0.5, animations: {
+            self.signInButton.frame = CGRect(origin: CGPoint(x:self.view.frame.size.width/2-self.signInButton.frame.size.height/2,y:self.signInButton.frame.origin.y), size: CGSize(width: self.signInButton.frame.size.height, height: self.signInButton.frame.size.height))
+            self.signInButton.setTitleColor(.clear, for: .normal)
+        }) { (true) in
+            print(self.signInButton.frame)
+            self.signInButton.setBackgroundImage(self.image, for: .normal)
+        }
+        let chatVc = self.storyboard?.instantiateViewController(withIdentifier: "ChatViewController") as! ChatViewController
+        loginProcess(username: emailTextField.text!, password: passwordTextField.text!, vc: chatVc, error: { (err) in
+            self.errorLabel.text = err.localizedDescription
+            self.errorLabel.alpha = 1
+            UIView.animate(withDuration: 0.5, animations: {
+                self.signInButton.frame.size.width = self.originalWidth
+                self.signInButton.setBackgroundImage(nil, for: .normal)
+                self.signInButton.frame.origin.x = self.view.frame.size.width/2-self.originalWidth/2
+            }) { (true) in
+                self.signInButton.setTitleColor(.black, for: .normal)
+            }
+        }) { (vc) in
+            self.animatingView.alpha = 1
+
+            let anim1 = CABasicAnimation(keyPath: #keyPath(CALayer.cornerRadius))
+            anim1.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionLinear)
+            anim1.fromValue = self.animatingView.frame.size.width/2
+            anim1.toValue = (self.view.frame.size.height+200)/2
+            anim1.duration = 0.5
+            self.animatingView.layer.add(anim1, forKey: "cornerRadius")
+
+            UIView.animate(withDuration: 0.5, delay: 0, options: .curveLinear, animations: {
+                self.animatingView.frame = CGRect(x: -100+self.view.frame.size.width/2-self.view.frame.size.height/2, y: -100, width: self.view.frame.size.height+200, height: self.view.frame.size.height+200)
+
+            }, completion: { (true) in
+                let transition = CATransition()
+                transition.duration = 0.5
+                transition.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
+                transition.type = kCATransitionFade
+                self.navigationController?.view.layer.add(transition, forKey: nil)
+                //                StoreLogin.sharedInstance.setLogin(username: self.emailTextField.text!, password: self.passwordTextField.text!)
+                StoreViewed.sharedInstance.loggedIn()
+                self.navigationController?.present(vc, animated: true, completion: nil)
             })
         }
     }
