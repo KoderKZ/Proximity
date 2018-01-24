@@ -121,7 +121,7 @@ class SignInViewController:UIViewController{
                 self.navigationController?.view.layer.add(transition, forKey: nil)
                 //                StoreLogin.sharedInstance.setLogin(username: self.emailTextField.text!, password: self.passwordTextField.text!)
                 StoreViewed.sharedInstance.loggedIn()
-                self.navigationController?.present(vc, animated: true, completion: nil)
+                self.navigationController?.pushViewController(vc, animated: false)
             })
         }
     }

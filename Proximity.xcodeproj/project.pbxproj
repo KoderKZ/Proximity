@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A10069D201691A800FA3A1D /* GuillotineMenuTransitionAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A10069C201691A800FA3A1D /* GuillotineMenuTransitionAnimation.swift */; };
 		0A221BF91FAD40C200A5BF8C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A221BF81FAD40C200A5BF8C /* AppDelegate.swift */; };
 		0A221BFE1FAD40C200A5BF8C /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 0A221BFC1FAD40C200A5BF8C /* Main.storyboard */; };
 		0A221C001FAD40C200A5BF8C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0A221BFF1FAD40C200A5BF8C /* Assets.xcassets */; };
@@ -72,7 +71,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0A10069C201691A800FA3A1D /* GuillotineMenuTransitionAnimation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = GuillotineMenuTransitionAnimation.swift; sourceTree = "<group>"; };
 		0A221BF51FAD40C100A5BF8C /* Proximity.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Proximity.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A221BF81FAD40C200A5BF8C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		0A221BFD1FAD40C200A5BF8C /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
@@ -234,7 +232,6 @@
 		0A6CBD2E1FFE6C090028113D /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				0A10069C201691A800FA3A1D /* GuillotineMenuTransitionAnimation.swift */,
 				0A5BEC5220150CDA006AC273 /* spinner.gif */,
 				0AF7545C1FC4F1B90067B4AE /* GoogleService-Info.plist */,
 				0A9EB45B1FBD12A9008D2EBD /* Raleway-Regular.ttf */,
@@ -449,6 +446,7 @@
 				"${BUILT_PRODUCTS_DIR}/Fuse/Fuse.framework",
 				"${BUILT_PRODUCTS_DIR}/GTMSessionFetcher/GTMSessionFetcher.framework",
 				"${BUILT_PRODUCTS_DIR}/GoogleToolboxForMac/GoogleToolboxForMac.framework",
+				"${BUILT_PRODUCTS_DIR}/GuillotineMenu/GuillotineMenu.framework",
 				"${BUILT_PRODUCTS_DIR}/SwiftGifOrigin/SwiftGifOrigin.framework",
 				"${BUILT_PRODUCTS_DIR}/leveldb-library/leveldb.framework",
 				"${BUILT_PRODUCTS_DIR}/nanopb/nanopb.framework",
@@ -458,6 +456,7 @@
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Fuse.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GTMSessionFetcher.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GoogleToolboxForMac.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GuillotineMenu.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/SwiftGifOrigin.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/leveldb.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/nanopb.framework",
@@ -476,7 +475,6 @@
 			files = (
 				0A221C3C1FAFB9FB00A5BF8C /* ProfileViewController.swift in Sources */,
 				0A2B16531FAFDF12005F8DF6 /* FirebaseHelper.swift in Sources */,
-				0A10069D201691A800FA3A1D /* GuillotineMenuTransitionAnimation.swift in Sources */,
 				0A3E5285200EC33C002BA2B5 /* StartingViewController.swift in Sources */,
 				0A5BEC4A2014F52A006AC273 /* BubbleTransition.swift in Sources */,
 				0A221C321FAFB96F00A5BF8C /* ChatViewController.swift in Sources */,

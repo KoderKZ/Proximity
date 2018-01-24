@@ -327,6 +327,41 @@
             </objects>
             <point key="canvasLocation" x="-410.39999999999998" y="117.39130434782609"/>
         </scene>
+        <!--Selection View-->
+        <scene sceneID="UN1-Nl-WMi">
+            <objects>
+                <viewController storyboardIdentifier="SelectionViewController" id="IEI-NB-x8z" customClass="SelectionView" customModule="Proximity" customModuleProvider="target" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="KRv-Cb-DY5">
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Wc8-Qh-BQa">
+                                <rect key="frame" x="0.0" y="0.0" width="88" height="88"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" secondItem="Wc8-Qh-BQa" secondAttribute="height" multiplier="1:1" id="8fy-In-jhJ"/>
+                                    <constraint firstAttribute="height" constant="88" id="RGQ-z1-973"/>
+                                </constraints>
+                                <state key="normal" image="downMenu"/>
+                                <connections>
+                                    <action selector="menuButtonTapped:" destination="IEI-NB-x8z" eventType="touchUpInside" id="Wb4-26-26r"/>
+                                </connections>
+                            </button>
+                        </subviews>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                        <constraints>
+                            <constraint firstItem="Wc8-Qh-BQa" firstAttribute="leading" secondItem="KRv-Cb-DY5" secondAttribute="leading" id="gFA-7u-JeM"/>
+                            <constraint firstItem="Wc8-Qh-BQa" firstAttribute="top" secondItem="KRv-Cb-DY5" secondAttribute="top" id="zSk-LG-Fc3"/>
+                        </constraints>
+                        <viewLayoutGuide key="safeArea" id="YkU-gy-Yk2"/>
+                    </view>
+                    <connections>
+                        <outlet property="menuButton" destination="Wc8-Qh-BQa" id="Xww-fZ-mq1"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="Loo-ZR-fk8" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="-1916" y="-577.06146926536735"/>
+        </scene>
         <!--Forgot Password View Controller-->
         <scene sceneID="7yS-Mq-l87">
             <objects>
@@ -1220,6 +1255,7 @@
     </scenes>
     <resources>
         <image name="backButton" width="500" height="500"/>
+        <image name="downMenu" width="500" height="500"/>
         <image name="menu" width="500" height="500"/>
         <image name="sendImage" width="500" height="500"/>
         <image name="settings" width="500" height="500"/>

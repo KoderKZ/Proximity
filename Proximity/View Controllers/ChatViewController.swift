@@ -10,7 +10,10 @@ import Foundation
 import UIKit
 import GooglePlaces
 import FirebaseStorage
-class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSource,UIImagePickerControllerDelegate,UINavigationControllerDelegate,UITextViewDelegate,UIScrollViewDelegate{
+import GuillotineMenu
+class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSource,UIImagePickerControllerDelegate,UINavigationControllerDelegate,UITextViewDelegate,UIScrollViewDelegate,SelectionViewControllerDelegate{
+
+    
     fileprivate lazy var presentationAnimator = GuillotineTransitionAnimation()
 
     @IBOutlet weak var sendingView: UIView!
@@ -25,14 +28,15 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     @IBOutlet var imageButton: UIButton!
     var chat:Chat!
     var changingLines = false
-    var selectionView:SelectionView!
     var displayImageView:DisplayImageView!
     let profileIcons = NSMutableDictionary()
     let members:NSMutableArray = NSMutableArray()
     var postAmount = 0
     var canDismiss = true
     var keyboardUp = false
-    
+    var postsObserver:UInt!
+    var membersObserver:UInt!
+    var selectionView = SelectionView()
     var statusBarHidden:Bool = false{
         didSet{
             if statusBarHidden == false{
@@ -63,11 +67,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     
         
         //set up side bar for selecting chats
-        selectionView = SelectionView(frame: CGRect(x: -self.view.frame.size.width/4*3, y: 0, width: self.view.frame.size.width/4*3, height: self.view.frame.size.height))
-        selectionView.setUpLabels(cellHeight: menuBar.frame.size.height)//pass in menu bar height
-        selectionView.alpha = 0
-
-        self.view.addSubview(selectionView)
         
         displayImageView = DisplayImageView(frame: self.view.frame)
         self.view.addSubview(displayImageView)
@@ -106,42 +105,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         chatView.allowsSelection = false
         
         
-        StoreViewed.sharedInstance.amtViewed.addObserver(self, forKeyPath: "count", options: .new, context: nil)
-
-        
-        if selectionView.frame.origin.x == 0{
-            moveMenu()
-        }
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(true)
-        selectionView.alpha = 1
-        textView.isEditable = true
-        canDismiss = true
-        selectionView.tableView.reloadData {
-            self.resetSelectionViewButtons()
-        }
-    }
-    
-    func resetSelectionViewButtons(){
-        for var i in 0..<FirebaseHelper.personal.chats.count{
-            let cell = selectionView.tableView.cellForRow(at: IndexPath(item: i, section: 0))
-            (cell?.contentView.subviews[0] as! UIButton).addTarget(self, action: #selector(chatTapped(sender:)), for: .touchUpInside)//set tap chat gesture
-        }
-        for var i in 0..<FirebaseHelper.personal.friends.count{
-            let cell = selectionView.tableView.cellForRow(at: IndexPath(item: i, section: 1))
-            (cell?.contentView.subviews[0] as! UIButton).addTarget(self, action: #selector(moveToProfileViewController(sender:)), for: .touchUpInside)//set tap chat gesture
-        }
-        selectionView.joinChatButton.tag = 0
-        selectionView.addFriendButton.tag = 1
-        selectionView.joinChatButton.addTarget(self, action: #selector(moveToAddViewController(sender:)), for: .touchUpInside)
-        selectionView.addFriendButton.addTarget(self, action: #selector(moveToAddViewController(sender:)), for: .touchUpInside)
-        selectionView.selfButton.addTarget(self, action: #selector(moveToSelfProfile), for: .touchUpInside)
-    }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        
         let _textView = UITextView()
         _textView.text = " "
         textView.frame.size.height = sendingView.frame.size.height
@@ -149,12 +112,30 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         self.textView.contentSize = textView.frame.size
         textView.frame.size.width = sendingView.frame.size.width-imageButton.frame.size.width-sendButton.frame.size.width
         
-        selectionView.tableView.reloadData {
-            self.resetSelectionViewButtons()
-        }
+        selectionView = storyboard?.instantiateViewController(withIdentifier: "SelectionViewController") as! SelectionView
+        selectionView.modalPresentationStyle = .custom
+        selectionView.transitioningDelegate = self
+        selectionView.delegate = self
+        presentationAnimator.animationDelegate = selectionView as? GuillotineAnimationDelegate
+        presentationAnimator.supportView = self.navigationController?.navigationBar
+        presentationAnimator.presentButton = menuButton
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(true)
+        textView.isEditable = true
+        canDismiss = true
+    }
+
+
+
+    override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(true)
+        self.view.isUserInteractionEnabled = true
         if chat != nil{
             chatNameLabel.text = chat.chatName
+            FirebaseHelper.ref.removeObserver(withHandle: postsObserver)
+            FirebaseHelper.ref.removeObserver(withHandle: membersObserver)
             fetchMembers(chatId: chat.id)
             fetchPosts(chatId: chat.id)
         }
@@ -173,22 +154,17 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             joinChatLabel.alpha = 1
         }
     }
+
     
 
     
     //MARK: Observers for data
     
     
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "count"{
-            selectionView.tableView.reloadData()
-            resetSelectionViewButtons()
-        }
-    }
     
     func fetchMembers(chatId:String){
         var members = NSArray()
-        FirebaseHelper.ref.child("chats").child(chatId).child("members").observe(.childAdded) { (snapshot) in
+        membersObserver = FirebaseHelper.ref.child("chats").child(chatId).child("members").observe(.childAdded) { (snapshot) in
             var contains = false
             for var i in self.chat.members{
                 if (i as! String) == snapshot.value as! String{
@@ -217,7 +193,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     }
     
     func fetchPosts(chatId:String) {
-        FirebaseHelper.ref.child("chats").child(chatId).child("posts").observe(.childAdded) { (snapshot) in
+        postsObserver = FirebaseHelper.ref.child("chats").child(chatId).child("posts").observe(.childAdded) { (snapshot) in
             FirebaseHelper.ref.child("chats").child(chatId).child("posts").observeSingleEvent(of:.value, with: { (postsCount) in
                 if let posts = postsCount.value as? NSDictionary{
                     self.postAmount = posts.allKeys.count
@@ -247,11 +223,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                                 post = Post(chatId: self.chat.id, text: text , image: image, profileId: postValues["profileId"] as! String, timestamp: postValues["timestamp"] as! String, datestamp: postValues["datestamp"] as! String, place: place)
                                 if !self.chat.posts.contains(post){
                                     self.chat.posts.insert(post, at: index)
-                                    self.chatView.reloadData(){
-                                        if self.selectionView.frame.origin.x == 0{
-                                            self.moveMenu()
-                                        }
-                                    }
+                                    self.chatView.reloadData()
                                 }
                             })
                             
@@ -283,9 +255,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                     }
                     if self.postAmount == self.chat.posts.count{
                         self.chatView.reloadData(){
-                            if self.selectionView.frame.origin.x == 0{
-                                self.moveMenu()
-                            }
                             self.menuButton.isEnabled = true
                         }
                         let indexPath = IndexPath(row: (self.sections.object(at: self.sections.count-1) as! section).amt-1, section: self.sections.count-1)
@@ -304,7 +273,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     //MARK: Keyboard Updaters
     
     @objc func keyboardWillShow(notification:NSNotification){
-        if let viewController =  self.navigationController?.topViewController as? ChatViewController{
+        if let viewController = self.navigationController?.topViewController as? ChatViewController{
             canDismiss = false
             let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
             let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
@@ -313,17 +282,15 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                 let indexPath = IndexPath(row: (self.sections.object(at: self.sections.count-1) as! section).amt-1, section: self.sections.count-1)
                 self.chatView.scrollToRow(at: indexPath, at: .bottom, animated: false)
             }
-//            delay(0.001){
-                UIView.animate(withDuration: keyboardDuration, animations: {
-                    self.sendingView.frame.origin.y = keyboardFrame.origin.y-self.sendingView.frame.size.height
-                }, completion: { (true) in
-                    delay(0.5){
-                        self.canDismiss = true
-                        self.keyboardUp = true
-                    }
-                })
-                self.textView.isEditable = true
-//            }
+            UIView.animate(withDuration: keyboardDuration, animations: {
+                self.sendingView.frame.origin.y = keyboardFrame.origin.y-self.sendingView.frame.size.height
+            }, completion: { (true) in
+                delay(0.5){
+                    self.canDismiss = true
+                    self.keyboardUp = true
+                }
+            })
+            self.textView.isEditable = true
         }
     }
     
@@ -405,33 +372,45 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         self.sendingView.frame.origin.x = self.view.frame.size.width/4*3
     }
     
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        
+    }
+    
+    func didDismiss() {
+        self.navigationController?.dismiss(animated: true, completion: nil)
+    }
+    
+    func chatTapped(_chat:Chat) {
+        self.chat = _chat
+        self.chat.posts.removeAllObjects()
+        self.chatNameLabel.text = _chat.chatName
+        self.sections = NSMutableArray()
+        FirebaseHelper.ref.removeObserver(withHandle: self.postsObserver!)
+        FirebaseHelper.ref.removeObserver(withHandle: self.membersObserver!)
+        self.fetchPosts(chatId: _chat.id)
+        self.fetchMembers(chatId: _chat.id)
+        self.chatView.reloadData()
+        StoreViewed.sharedInstance.addViewed(id: _chat.id)
+        self.navigationController?.dismiss(animated: true, completion: nil)
+    }
+    
     @IBAction func menuButtonTapped(_ sender: Any) {
         //display/hide side bar
         self.textView.endEditing(true)
-        moveMenu()
+        selectionView.transitioningDelegate = self
+        self.navigationController?.present(selectionView, animated: true, completion: nil)
+        
+        
+//        let menuViewController = storyboard!.instantiateViewController(withIdentifier: "MenuViewController")
+//        menuViewController.modalPresentationStyle = .custom
+//        menuViewController.transitioningDelegate = self
+//
+//        presentationAnimator.animationDelegate = menuViewController as? GuillotineAnimationDelegate
+//        presentationAnimator.supportView = navigationController!.navigationBar
+//        presentationAnimator.presentButton = sender
+//        present(menuViewController, animated: true, completion: nil)
     }
     
-    func moveMenu() {
-//        UIView.animate(withDuration: 0.25) {
-            if self.selectionView.frame.origin == CGPoint(x: 0, y: 0){
-                self.statusBarHidden = false
-                self.selectionView.frame.origin = CGPoint(x: -self.view.frame.size.width/4*3, y: 0)
-                self.menuBar.frame.origin = CGPoint(x: 0, y: 0)
-                self.joinChatLabel.frame.origin.x = 0
-                self.chatView.frame.origin.x = 0
-                self.sendingView.frame.origin.x = 0
-                self.textView.isEditable = true
-            }else{
-                self.statusBarHidden = true
-                self.selectionView.frame.origin = CGPoint(x: 0, y: 0)
-                self.menuBar.frame.origin = CGPoint(x: self.view.frame.size.width/4*3, y: 0)
-                self.joinChatLabel.frame.origin.x = self.view.frame.size.width/4*3
-                self.chatView.frame.origin.x = self.view.frame.size.width/4*3
-                self.sendingView.frame.origin.x = self.view.frame.size.width/4*3
-                self.textView.isEditable = false
-            }
-//        }
-    }
     
     override var preferredStatusBarUpdateAnimation: UIStatusBarAnimation{
         return .slide
@@ -441,22 +420,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         return statusBarHidden
     }
 
-    @objc func chatTapped(sender:UIButton){
-        //change chats
-        settingsButton.alpha = 1
-        chatNameLabel.alpha = 1
-        if self.chat.id != (FirebaseHelper.personal.chats[sender.tag] as! Chat).id{
-            self.chat = FirebaseHelper.personal.chats[sender.tag] as! Chat
-            (FirebaseHelper.personal.chats[sender.tag] as! Chat).posts.removeAllObjects()
-            self.chat.posts.removeAllObjects()
-            self.chatNameLabel.text = selectionView.tableView.cellForRow(at: IndexPath(item: sender.tag, section: 0))?.textLabel?.text!
-            sections = NSMutableArray()
-            fetchPosts(chatId: chat.id)
-            chatView.reloadData()
-        }
-        StoreViewed.sharedInstance.addViewed(id: chat.id)
-        moveMenu()
-    }
     
     @IBAction func sendTapped(_ sender: Any) {
         if textView.text! != ""{
@@ -485,48 +448,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     
     
     //MARK: Move to new vc
-    
-    @objc func moveToSelfProfile(){
-        let vc = self.storyboard?.instantiateViewController(withIdentifier: "ProfileViewController") as! ProfileViewController
-        let chatArray = NSMutableArray()
-        for var chat in FirebaseHelper.personal.chats{
-            chatArray.add((chat as! Chat).id)
-        }
-        
-        let friendArray = NSMutableArray()
-        for var friend in FirebaseHelper.personal.friends{
-            friendArray.add((friend as! Profile).userId)
-        }
-        let selfProfile = Profile(username: FirebaseHelper.personal.username, userId: FirebaseHelper.personal.userId, friends: friendArray, icon: FirebaseHelper.personal.icon, chats: chatArray, latitude: FirebaseHelper.personal.latitude, longitude: FirebaseHelper.personal.longitude)
-        vc.setProfiles(profile: selfProfile, profiles: friendArray)
-        self.navigationController?.pushViewController(vc, animated: true)
-        
-    }
-    @objc func moveToAddViewController(sender:UIButton){
-        let vc = self.storyboard?.instantiateViewController(withIdentifier: "AddViewController") as! AddViewController
-        if sender.tag == 0{
-            vc.isFriends = false
-        }else{
-            vc.isFriends = true
-        }
-        self.navigationController?.pushViewController(vc, animated: true)
-    }
-    
-    @objc func moveToProfileViewController(sender:UIButton){
-        for var i in FirebaseHelper.personal.friends{
-            if (i as! Profile).username == sender.currentTitle!.replacingOccurrences(of: " ", with: "") {
-                let vc = self.storyboard?.instantiateViewController(withIdentifier: "ProfileViewController") as! ProfileViewController
-
-                let array = NSMutableArray()
-                for var j in (i as! Profile).friends{
-                    array.add(j)
-                }
-                array.add(FirebaseHelper.personal.userId)
-                vc.setProfiles(profile: (i as! Profile), profiles: array)
-                self.navigationController?.pushViewController(vc, animated: true)
-            }
-        }
-    }
     
     
     
@@ -578,20 +499,11 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     }
     
     
-    
-    func textViewDidBeginEditing(_ textView: UITextView) {
-        if selectionView.frame.origin.x == 0{
-            moveMenu()
-        }
-    }
-    
     //MARK: TableView methods
     
     @objc func tableViewTapped(){
         if canDismiss && keyboardUp{
             dismissKeyboard()
-        }else if selectionView.frame.origin.x == 0{
-            moveMenu()
         }
     }
     
@@ -622,9 +534,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        if self.selectionView.frame.origin.x == 0{
-            moveChatViews()
-        }
 
         let cell = ChatMessageCell(style: .default, reuseIdentifier: "cell")
         var startIndex = 0
