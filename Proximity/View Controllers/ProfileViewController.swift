@@ -290,7 +290,9 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
                         }else{
                         }
                         UIView.animate(withDuration: 0.2, animations: {
-                            self.selectionView.frame.origin.y = self.view.frame.size.height-90
+                            if self.homeMenu{
+                                self.selectionView.frame.origin.y = self.view.frame.size.height-90
+                            }
                             self.profileView.frame.origin.y = self.view.frame.size.height-self.topView.frame.size.height
                             self.tableView.reloadData()
                         })

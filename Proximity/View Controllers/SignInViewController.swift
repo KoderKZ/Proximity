@@ -52,8 +52,6 @@ class SignInViewController:UIViewController{//sign in vc
         errorLabel.alpha = 0
         
         self.hideKeyboardWhenTappedAround()
-
-        image = UIImage.gif(name: "spinner")!//get gif image so can set later
         
         originalWidth = self.view.frame.size.width/5*4
         signInButton.frame = CGRect(x: self.view.frame.size.width/2-originalWidth/2, y: forgotPasswordButton.frame.origin.y+forgotPasswordButton.frame.size.height+50, width: originalWidth, height: originalWidth/5)
@@ -70,10 +68,13 @@ class SignInViewController:UIViewController{//sign in vc
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(true)//correct autolayout if it went wrong
+        errorLabel.alpha = 0
         self.signInButton.frame.size.width = self.originalWidth
         self.signInButton.setBackgroundImage(nil, for: .normal)
         self.signInButton.frame.origin.x = self.view.frame.size.width/2-self.originalWidth/2
         self.signInButton.setTitleColor(.white, for: .normal)
+        
+        image = UIImage.gif(name: "spinner")!//get gif image so can set later
         
         //set up animatingView:animates when log in
         animatingView.alpha = 0
@@ -90,7 +91,7 @@ class SignInViewController:UIViewController{//sign in vc
         originalWidth = self.signInButton.frame.size.width
         self.view.isUserInteractionEnabled = false//make sure nothing happens while trying to log in
 
-        UIView.animate(withDuration: 0.25, animations: {//set button as loading circle
+        UIView.animate(withDuration: 0.5, animations: {//set button as loading circle
             self.signInButton.frame = CGRect(origin: CGPoint(x:self.view.frame.size.width/2-self.signInButton.frame.size.height/2,y:self.signInButton.frame.origin.y), size: CGSize(width: self.signInButton.frame.size.height, height: self.signInButton.frame.size.height))
             self.signInButton.setTitleColor(.clear, for: .normal)
         }) { (true) in
@@ -101,12 +102,14 @@ class SignInViewController:UIViewController{//sign in vc
             self.errorLabel.text = err.localizedDescription//error in logging in, set error message, return to normal
             self.errorLabel.alpha = 1
             self.view.isUserInteractionEnabled = true
+            self.signInButton.setBackgroundImage(nil, for: .normal)
             UIView.animate(withDuration: 0.5, animations: {
                 self.signInButton.frame.size.width = self.originalWidth
-                self.signInButton.setBackgroundImage(nil, for: .normal)
                 self.signInButton.frame.origin.x = self.view.frame.size.width/2-self.originalWidth/2
+                self.signInButton.setBackgroundImage(nil, for: .normal)
             }) { (true) in
                 self.signInButton.setTitleColor(.white, for: .normal)
+                self.signInButton.setBackgroundImage(nil, for: .normal)
             }
         }) { (bool) in
             self.animatingView.alpha = 1//successfully logged in, animate to next view

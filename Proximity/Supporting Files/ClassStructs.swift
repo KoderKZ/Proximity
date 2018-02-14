@@ -316,6 +316,7 @@ func loginProcess(username:String, password:String, error: @escaping (Error) -> 
     Auth.auth().signIn(withEmail: username, password: password) { (user, err) in
         if err != nil{
             error(err!)//exits with error
+            return
         }
         let ref = FirebaseHelper.ref.child("users").child((user?.uid)!)
         var icon = ""
@@ -390,6 +391,7 @@ func loginProcess(username:String, password:String, error: @escaping (Error) -> 
                                 if dictionary.keys.contains("friends"){tempFriendArray = dictionary["friends"] as! NSMutableArray}
                                 if dictionary.keys.contains("chats"){chats = dictionary["chats"] as! NSMutableArray}
                                 let friend = Profile(username: dictionary["username"] as! String, userId: i as! String, friends: tempFriendArray, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
+                                profileIcons.addEntries(from: [friend.userId: friend.icon])
                                 friends.add(friend)
                                 finishedFriends += 1
                                 if finishedFriends == friendArray.count && finishedRequests == 1 && finishedFriendRequests{

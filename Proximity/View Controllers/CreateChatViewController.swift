@@ -153,7 +153,8 @@ class CreateChatViewController:UIViewController,UITableViewDataSource,UITableVie
                             }
                         })
                     }
-                    FirebaseHelper.ref.child("chatNames").updateChildValues([chat.chatName:chat.id])
+                    
+                    FirebaseHelper.ref.child("chatNames").updateChildValues([chat.chatName.replacingOccurrences(of: "#", with: ""):chat.id])
                     StoreViewed.sharedInstance.addObserver(chatId:chat.id)
                     self.navigationController?.popViewController(animated: false)
                 })

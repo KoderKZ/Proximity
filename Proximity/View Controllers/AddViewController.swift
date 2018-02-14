@@ -296,8 +296,19 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
                     var membersCount = "0"
                     var members = NSMutableArray()
                     if let membersArr = chat["members"] as? NSMutableArray{
-                        membersCount = "\(members.count)"
+                        membersCount = "\(membersArr.count)"
                         members = membersArr
+                        
+                        for var j in members{
+                            if profileIcons.object(forKey: j as! String) == nil{
+                                FirebaseHelper.ref.child("users").child(j as! String).observeSingleEvent(of:.value, with: { (snapshot) in
+                                    if let profile = snapshot.value as? [String:AnyObject] {
+                                        profileIcons.addEntries(from: [(j as! String): profile["icon"]])
+                                    }
+                                })
+                            }
+                        }
+                        
                     }
                     ref.child("members").updateChildValues([membersCount:FirebaseHelper.personal.userId])
                     var posts = NSMutableArray()
