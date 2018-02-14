@@ -14,7 +14,7 @@ import CoreLocation
 import GooglePlaces
 import GoogleMaps
 import GooglePlacePicker
-class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapViewDelegate,GMSPlacePickerViewControllerDelegate,UITableViewDataSource,UITableViewDelegate{
+class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapViewDelegate,GMSPlacePickerViewControllerDelegate,UITableViewDataSource,UITableViewDelegate,SelectionViewDelegate{
     @IBOutlet weak var addFriendButton: UIButton!
     @IBOutlet weak var backButton: UIButton!
     @IBOutlet weak var usernameLabel: UILabel!
@@ -24,6 +24,8 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     var inMapView:Bool!
     var regularProfileViewOrigin:CGPoint!
     var regularMapViewHeight:CGFloat!
+    var homeMenu:Bool = false
+    var selectionView:SelectionView!
     
     let locationManager = CLLocationManager()
     
@@ -41,36 +43,81 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     var placesClient: GMSPlacesClient!
     
     override func viewDidLoad() {
+
         inMapView = false
         
-        topView.backgroundColor = bgColor
+        topView.backgroundColor = darkBgColor
+        
+        nearbyPlacesButton.backgroundColor = darkBgColor
+        nearbyPlacesButton.setTitleColor(.white, for: .normal)
         
         tableView = UITableView(frame: CGRect(x: usernameLabel.frame.origin.x, y: topView.frame.origin.y+topView.frame.size.height+10, width: self.view.frame.size.width-(usernameLabel.frame.origin.x*2), height: profileView.frame.size.height*5/6))
         tableView.delegate = self
         tableView.dataSource = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
         profileView.addSubview(tableView)
-
         
-
-        
-
-        
+        tableView.allowsSelection = false
         
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
         
-        mapView.animate(toLocation: CLLocationCoordinate2DMake((locationManager.location?.coordinate.latitude)!, (locationManager.location?.coordinate.longitude)!))
+        mapView.animate(toLocation: CLLocationCoordinate2DMake(profile.latitude, profile.longitude))
         mapView.animate(toZoom: 15)
         mapView.delegate = self
         mapView.isUserInteractionEnabled = true
         placesClient = GMSPlacesClient.shared()
         for var _profile in profiles{
-            fetchLocations(user: _profile as! String)
+            if let string = _profile as? String{
+                fetchLocations(user: string)
+            }else if let prof = _profile as? Profile{
+                fetchLocations(user: prof.userId)
+            }
         }
         updateMarkers()
+        
+        if homeMenu{
+            backButton.alpha = 0
+            let height:CGFloat = 75
+            let width = self.view.frame.size.width-30
+            selectionView = SelectionView(frame: CGRect(x: 15, y: self.view.frame.size.height-15-height, width: width, height: height))
+            selectionView.delegate = self
+            self.view.addSubview(selectionView)
+            tableView.frame.size.height -= selectionView.frame.size.height+selectionView.margin*2
+        }
+    }
+    
+    func selectionTapped(tag: Int) {
+        let selectionVC = self.navigationController?.viewControllers[1] as! SelectionViewController
+        
+        if tag < 2{
+            self.navigationController?.popViewController(animated: false)
+            selectionVC.tab = tag
+        }else if tag == 2{
+            let addVC = self.storyboard?.instantiateViewController(withIdentifier: "AddViewController") as! AddViewController
+            self.navigationController?.viewControllers = [(self.navigationController?.viewControllers[0])!, selectionVC, addVC]
+        }else if tag == 3{
+            let createVC = self.storyboard?.instantiateViewController(withIdentifier: "CreateChatViewController") as! CreateChatViewController
+            self.navigationController?.viewControllers = [(self.navigationController?.viewControllers[0])!, selectionVC, createVC]
+        }else if tag == 4{
+            let chatArray = NSMutableArray()
+            for var chat in FirebaseHelper.personal.chats{
+                chatArray.add((chat as! Chat).id)
+            }
+            
+            let friendArray = NSMutableArray()
+            for var friend in FirebaseHelper.personal.friends{
+                friendArray.add((friend as! Profile).userId)
+            }
+            let selfProfile = Profile(username: FirebaseHelper.personal.username, userId: FirebaseHelper.personal.userId, friends: friendArray, icon: FirebaseHelper.personal.icon, chats: chatArray, latitude: FirebaseHelper.personal.latitude, longitude: FirebaseHelper.personal.longitude)
+            self.profile = selfProfile
+                logoutButton.alpha = 1
+                addFriendButton.alpha = 0
+            usernameLabel.text = profile.username
+            tableView.reloadData()
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -78,10 +125,18 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
         regularProfileViewOrigin = profileView.frame.origin
         regularMapViewHeight = mapView.frame.size.height
         if profile != nil{
+            let friendsArray = NSMutableArray()
+            for var profile in FirebaseHelper.personal.friends{
+                friendsArray.add((profile as! Profile).userId)
+            }
+            let friendRequestArray = NSMutableArray()
+            for var profile in FirebaseHelper.personal.friendRequests{
+                friendRequestArray.add((profile as! Profile).userId)
+            }
             if profile.username == FirebaseHelper.personal.username{
                 logoutButton.alpha = 1
                 addFriendButton.alpha = 0
-            }else if !FirebaseHelper.personal.friendRequests.contains(profile){
+            }else if !friendsArray.contains(profile.userId) && !friendRequestArray.contains(profile.userId){
                 logoutButton.alpha = 0
                 addFriendButton.alpha = 1
             }else{
@@ -103,19 +158,24 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     func setProfiles(profile:Profile,profiles:NSMutableArray) {
         self.profile = profile
         self.profiles = profiles
+
     }
     
     @IBAction func logoutTapped(_ sender: Any) {
         do{
             try Auth.auth().signOut()
             
-            let vc = self.navigationController?.viewControllers[1]
-            self.navigationController?.popToViewController(vc!, animated: true)
+            if let vc = self.navigationController?.viewControllers[1] as? SignInViewController{
+                self.navigationController?.popToViewController(vc, animated: true)
+            }else{
+                let vc2 = self.storyboard?.instantiateViewController(withIdentifier: "SignInViewController")
+                let vc1 = self.storyboard?.instantiateViewController(withIdentifier: "StartingViewController")
+                self.navigationController?.setViewControllers([vc1!,vc2!], animated: true)
+            }
         }catch{}
     }
     @IBAction func addFriendTapped(_ sender: Any) {
         let button = UIButton()
-        button.tag = -1
         if FirebaseHelper.personal.friendRequests.contains(profile){
             acceptRequest(sender: button)
         }else{
@@ -125,13 +185,17 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         let point = touches.first?.location(in: self.view)
+        tableView.reloadData()
         if (point?.y)! > mapView.frame.size.height{
             UIView.animate(withDuration: 0.5, animations: {
                 self.profileView.frame.origin = self.regularProfileViewOrigin
                 self.mapView.frame.size.height = self.regularMapViewHeight
                 self.nearbyPlacesButton.frame.origin.y = self.mapView.frame.size.height-self.nearbyPlacesButton.frame.size.height
-                self.mapView.animate(toLocation: CLLocationCoordinate2DMake((self.locationManager.location?.coordinate.latitude)!, (self.locationManager.location?.coordinate.longitude)!))
+                self.mapView.animate(toLocation: CLLocationCoordinate2DMake(self.profile.latitude, self.profile.longitude))
                 self.mapView.animate(toZoom: 15)
+                if self.homeMenu{
+                    self.selectionView.frame.origin.y = self.view.frame.size.height-90
+                }
             })
         }
     }
@@ -185,29 +249,54 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
 
     }
     
+    
     func mapView(_ mapView: GMSMapView, didTap marker: GMSMarker) -> Bool {
         for var _profile in profiles{
+            if marker.title! == FirebaseHelper.personal.username{
+                _profile = FirebaseHelper.personal.userId
+            }
             FirebaseHelper.ref.child("users").child(_profile as! String).observeSingleEvent(of: .value, with: { (prof) in
                 if let dictionary = prof.value as? [String:AnyObject]{
                     if dictionary["username"] as! String == marker.title!{
-                        let newProf = Profile(username: dictionary["username"] as! String, userId: _profile as! String, friends: dictionary["friends"] as! NSArray, icon: dictionary["icon"] as! String, chats: dictionary["chats"] as! NSArray, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
+                        var chats = NSArray()
+                        if let chatArr = dictionary["chats"] as? NSArray{
+                            chats = chatArr
+                        }
+                        var friends = NSArray()
+                        if let friendArr = dictionary["friends"] as? NSArray{
+                            friends = friendArr
+                        }
+                        let newProf = Profile(username: dictionary["username"] as! String, userId: _profile as! String, friends: friends, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
                         self.profile = newProf
                         if self.profile.username == FirebaseHelper.personal.username{
                             self.logoutButton.alpha = 1
                             self.addFriendButton.alpha = 0
                         }else{
                             self.logoutButton.alpha = 0
+                            self.addFriendButton.alpha = 1
                             for var selfFriends in FirebaseHelper.personal.friends{
                                 if (selfFriends as! Profile).userId == _profile as! String{
-                                    self.addFriendButton.alpha = 1
+                                    self.addFriendButton.alpha = 0
                                 }
                             }
                         }
                         self.usernameLabel.text = self.profile.username
-                        self.tableView.reloadData()
+                        if self.profileView.frame.origin.y < self.view.frame.size.height-self.topView.frame.size.height{
+                        }else{
+                        }
+                        UIView.animate(withDuration: 0.2, animations: {
+                            self.selectionView.frame.origin.y = self.view.frame.size.height-90
+                            self.profileView.frame.origin.y = self.view.frame.size.height-self.topView.frame.size.height
+                            self.tableView.reloadData()
+                        })
+                        
+
                     }
                 }
             })
+            if marker.title! == FirebaseHelper.personal.username{
+                return true
+            }
         }
         return true
     }
@@ -255,7 +344,11 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
             self.profileView.frame.origin = CGPoint(x: 0, y: self.view.frame.size.height-self.topView.frame.size.height)
             self.mapView.frame.size = CGSize(width: self.view.frame.size.width, height: self.profileView.frame.origin.y)
             self.nearbyPlacesButton.frame.origin.y = self.mapView.frame.size.height-self.nearbyPlacesButton.frame.size.height
+            if self.homeMenu{
+                self.selectionView.frame.origin.y = self.view.frame.size.height
+            }
         })
+
     }
     
     
@@ -367,6 +460,12 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
         return cell
     }
     
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        if indexPath.section == 1{
+            
+        }
+    }
+    
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 60
     }
@@ -436,6 +535,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
                     let addChat = Chat(id: chat["id"] as! String, chatName: chat["chatName"] as! String, joinType: chat["joinType"] as! Int, members: chat["members"] as! NSMutableArray, posts: posts)
                     FirebaseHelper.personal.chats.add(addChat)
                     sender.setTitle("Joined", for: .normal)
+                    StoreViewed.sharedInstance.addObserver(chatId: chat["id"] as! String)
                 }else{
                     sender.setTitle("Closed", for: .normal)
                 }
@@ -444,14 +544,14 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     }
     
     @objc func sendRequest(sender:UIButton){
-        var _profile:Profile
-        if sender.tag == -1{
-            _profile = profile.friends.object(at: sender.tag) as! Profile
+        var _profile:String
+        if sender.tag != -1{
+            _profile = profile.friends.object(at: sender.tag) as! String
             sender.removeFromSuperview()
         }else{
-            _profile = self.profile
+            _profile = self.profile.userId
         }
-        FirebaseHelper.ref.child("users").child(_profile.userId).observeSingleEvent(of: .value) { (snapshot) in
+        FirebaseHelper.ref.child("users").child(_profile).observeSingleEvent(of: .value) { (snapshot) in
             if let dict = snapshot.value as? [String:AnyHashable]{
                 var value = [AnyHashable:Any]()
                 if dict.keys.contains("friendRequests"){
@@ -459,7 +559,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
                 }else{
                     value = [0:FirebaseHelper.personal.userId]
                 }
-                FirebaseHelper.ref.child("users").child(_profile.userId).child("friendRequests").updateChildValues(value)
+                FirebaseHelper.ref.child("users").child(_profile).child("friendRequests").updateChildValues(value)
             }
         }
         
@@ -468,7 +568,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     @objc func acceptRequest(sender:UIButton){
         var finished = false
         var _profile:Profile
-        if sender.tag == -1{
+        if sender.tag != -1{
             _profile = FirebaseHelper.personal.friendRequests.object(at: sender.tag) as! Profile
             sender.removeFromSuperview()
         }else{
@@ -478,7 +578,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
         FirebaseHelper.personal.friends.add(_profile)
         FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("friendRequests").child("\(sender.tag)").removeValue()
         FirebaseHelper.updatePersonal()
-        FirebaseHelper.ref.child("users").child((_profile as! Profile).userId).child("friends").observeSingleEvent(of: .value, with: { (snapshot) in
+        FirebaseHelper.ref.child("users").child((_profile).userId).child("friends").observeSingleEvent(of: .value, with: { (snapshot) in
             var friends = NSMutableArray()
             if let array = snapshot.value as? NSArray{
                 friends = array as! NSMutableArray

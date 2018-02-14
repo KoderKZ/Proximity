@@ -22,7 +22,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate,CLLocationManagerDelegate 
         -> Bool {
             FirebaseApp.configure()
             
-            
+            //always check location
             
             self.locationManager.requestAlwaysAuthorization()
             
@@ -34,6 +34,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate,CLLocationManagerDelegate 
                 self.locationManager.startUpdatingLocation()
             }
             
+            
+            //register api key for gms
             GMSPlacesClient.provideAPIKey("AIzaSyCTdmNzeRAKvhuQzjxmeo_kvsTpWvMjTrE")
             GMSServices.provideAPIKey("AIzaSyCTdmNzeRAKvhuQzjxmeo_kvsTpWvMjTrE")
                         
@@ -70,6 +72,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate,CLLocationManagerDelegate 
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        //checks if location changed
         if FirebaseHelper.personal != nil{
             let locValue:CLLocationCoordinate2D = manager.location!.coordinate
 
@@ -81,7 +84,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate,CLLocationManagerDelegate 
                 return
             }
             
-            if (FirebaseHelper.personal.latitude+0.005<locValue.latitude ||
+            if (FirebaseHelper.personal.latitude+0.005<locValue.latitude ||//if changed substantial amount, update
             FirebaseHelper.personal.latitude-0.005>locValue.latitude) &&
             (FirebaseHelper.personal.longitude+0.005<locValue.longitude &&
             FirebaseHelper.personal.longitude-0.005>locValue.longitude){

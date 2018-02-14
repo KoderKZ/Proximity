@@ -12,5 +12,4 @@ target ‘Proximity’ do
     pod 'GoogleMaps'
     pod 'Fuse'
     pod 'SwiftGifOrigin', '~> 1.6.1'
-pod 'GuillotineMenu'
 end

@@ -10,14 +10,10 @@ import Foundation
 import UIKit
 import GooglePlaces
 import FirebaseStorage
-import GuillotineMenu
-class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSource,UIImagePickerControllerDelegate,UINavigationControllerDelegate,UITextViewDelegate,UIScrollViewDelegate,SelectionViewControllerDelegate{
-
+class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSource,UIImagePickerControllerDelegate,UINavigationControllerDelegate,UITextViewDelegate,UIScrollViewDelegate,PlaceViewerViewControllerDelegate,SettingsViewControllerDelegate{
     
-    fileprivate lazy var presentationAnimator = GuillotineTransitionAnimation()
-
+    
     @IBOutlet weak var sendingView: UIView!
-    @IBOutlet weak var joinChatLabel: UILabel!
     @IBOutlet weak var menuButton: UIButton!
     @IBOutlet weak var settingsButton: UIButton!
     @IBOutlet weak var sendButton: UIButton!
@@ -29,14 +25,12 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     var chat:Chat!
     var changingLines = false
     var displayImageView:DisplayImageView!
-    let profileIcons = NSMutableDictionary()
     let members:NSMutableArray = NSMutableArray()
     var postAmount = 0
     var canDismiss = true
     var keyboardUp = false
     var postsObserver:UInt!
     var membersObserver:UInt!
-    var selectionView = SelectionView()
     var statusBarHidden:Bool = false{
         didSet{
             if statusBarHidden == false{
@@ -60,6 +54,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     //MARK: View Loading
     override func viewDidLoad() {
         
+        
         let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(tableViewTapped))
         tap.cancelsTouchesInView = false
         chatView.addGestureRecognizer(tap)
@@ -71,7 +66,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         displayImageView = DisplayImageView(frame: self.view.frame)
         self.view.addSubview(displayImageView)
         
-//        menuBar.backgroundColor = darkBgColor
 
         menuButton.adjustsImageWhenHighlighted = false
         settingsButton.adjustsImageWhenHighlighted = false
@@ -82,8 +76,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         textView.textColor = .black
         textView.delegate = self
         textView.centerVertically()
-        textView.layer.borderWidth = 1
-        textView.layer.borderColor = UIColor.black.cgColor
         sendButton.backgroundColor = .white
         sendButton.setTitleColor(blackBgColor, for: .normal)
         imageButton.backgroundColor = .white
@@ -112,46 +104,46 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         self.textView.contentSize = textView.frame.size
         textView.frame.size.width = sendingView.frame.size.width-imageButton.frame.size.width-sendButton.frame.size.width
         
-        selectionView = storyboard?.instantiateViewController(withIdentifier: "SelectionViewController") as! SelectionView
-        selectionView.modalPresentationStyle = .custom
-        selectionView.transitioningDelegate = self
-        selectionView.delegate = self
-        presentationAnimator.animationDelegate = selectionView as? GuillotineAnimationDelegate
-        presentationAnimator.supportView = self.navigationController?.navigationBar
-        presentationAnimator.presentButton = menuButton
+
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
         textView.isEditable = true
         canDismiss = true
+        self.chatView.reloadData()
+
     }
 
 
 
     override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(true)
-        self.view.isUserInteractionEnabled = true
-        if chat != nil{
-            chatNameLabel.text = chat.chatName
-            FirebaseHelper.ref.removeObserver(withHandle: postsObserver)
-            FirebaseHelper.ref.removeObserver(withHandle: membersObserver)
+
+        
+//        delay(1.5){
+//            self.chatView.reloadData()
+//        }
+        if postsObserver == nil{
+            chat.posts.removeAllObjects()
+            sections.removeAllObjects()
+            super.viewWillAppear(true)
+            
             fetchMembers(chatId: chat.id)
             fetchPosts(chatId: chat.id)
-        }
-        if chat == nil && FirebaseHelper.personal.chats.count > 0{
-            settingsButton.alpha = 1
-            chatNameLabel.alpha = 1
-            joinChatLabel.alpha = 0
-            chat = FirebaseHelper.personal.chats[0] as! Chat
+            self.view.isUserInteractionEnabled = true
             chatNameLabel.text = chat.chatName
-            fetchMembers(chatId: chat.id)
-            fetchPosts(chatId: chat.id)
-            StoreViewed.sharedInstance.addViewed(id: chat.id)
-        }else if FirebaseHelper.personal.chats.count == 0{
-            settingsButton.alpha = 0
-            chatNameLabel.alpha = 0
-            joinChatLabel.alpha = 1
+
+            textView.frame.origin.y = 0
+
+            let border = CALayer()
+            border.frame = CGRect(x: textView.frame.size.width-1, y: 0, width: 1, height: 1000)
+            border.backgroundColor = UIColor.black.cgColor
+            textView.layer.addSublayer(border)
+            
+            let border2 = CALayer()
+            border2.frame = CGRect(x: 0, y: 0, width: 1, height: 1000)
+            border2.backgroundColor = UIColor.black.cgColor
+            textView.layer.addSublayer(border2)
         }
     }
 
@@ -203,25 +195,27 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                     if let postValues = snapshot.value as? [String:AnyObject]{
                         var text = ""
                         var image = ""
-                        var place:AnyObject!
+                        var place:AnyObject! 
                         var foundPlace = false
                         var increasedBool = false
                         var post:Post!
-                        //                                                    var poll:Poll
                         if postValues.keys.contains("text"){text = postValues["text"] as! String}
                         if postValues.keys.contains("image"){
                             image = postValues["image"] as! String
-                            
-
+                            loadImageUsingUrlString(image) { success in}
                         }
                         
                         if postValues.keys.contains("place"){
-                            let placeId = postValues["place"] as! String
+                            foundPlace = true
                             let index = self.chat.posts.count
+                            post = Post(chatId: self.chat.id, text: "" , image: "", profileId: postValues["profileId"] as! String, timestamp: postValues["timestamp"] as! String, datestamp: postValues["datestamp"] as! String, place: "" as AnyObject)
+                            self.chat.posts.add(post)
+                            let placeId = postValues["place"] as! String
                             FirebaseHelper.placesClient.lookUpPlaceID(placeId, callback: { (placeSnap, err) in
                                 place = placeSnap!
                                 post = Post(chatId: self.chat.id, text: text , image: image, profileId: postValues["profileId"] as! String, timestamp: postValues["timestamp"] as! String, datestamp: postValues["datestamp"] as! String, place: place)
                                 if !self.chat.posts.contains(post){
+                                    self.chat.posts.removeObject(at: index)
                                     self.chat.posts.insert(post, at: index)
                                     self.chatView.reloadData()
                                 }
@@ -230,7 +224,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                         }else{
                             place = "none" as AnyObject
                         }
-                        //                                                    if postValues.keys.contains("poll"){}
                         if !foundPlace{
                             post = Post(chatId: self.chat.id, text: text , image: image, profileId: postValues["profileId"] as! String, timestamp: postValues["timestamp"] as! String, datestamp: postValues["datestamp"] as! String, place: place)
                             if !self.chat.posts.contains(post){
@@ -256,11 +249,13 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                     if self.postAmount == self.chat.posts.count{
                         self.chatView.reloadData(){
                             self.menuButton.isEnabled = true
+                            self.canDismiss = true
                         }
                         let indexPath = IndexPath(row: (self.sections.object(at: self.sections.count-1) as! section).amt-1, section: self.sections.count-1)
                         self.chatView.scrollToRow(at: indexPath, at: .bottom, animated: true)
                     }
                 }
+                self.chatView.reloadData()
             })
             
         }
@@ -278,10 +273,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
             let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
             self.chatView.frame.size.height = self.chatView.frame.size.height-keyboardFrame.size.height
-            if sections.count > 0{
-                let indexPath = IndexPath(row: (self.sections.object(at: self.sections.count-1) as! section).amt-1, section: self.sections.count-1)
-                self.chatView.scrollToRow(at: indexPath, at: .bottom, animated: false)
-            }
             UIView.animate(withDuration: keyboardDuration, animations: {
                 self.sendingView.frame.origin.y = keyboardFrame.origin.y-self.sendingView.frame.size.height
             }, completion: { (true) in
@@ -315,7 +306,9 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     
     @objc func imageTapped(sender:UIButton){
         let post = self.chat.posts.object(at: sender.tag) as! Post
-        displayImageView.imageView.loadImageUsingCacheWithUrlString(post.image)
+        loadImageUsingUrlString(post.image) { (image) in
+            self.displayImageView.imageView.image = image
+        }
         displayImageView.setImage(image: displayImageView.imageView.image!)
         displayImageView.appear()
     }
@@ -338,77 +331,28 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         
         let image = info[UIImagePickerControllerOriginalImage] as! UIImage
         if let data = UIImageJPEGRepresentation(image, 0.8){
-            let id = NSUUID().uuidString
-            FirebaseHelper.storageRef.child("images/\(id).jpeg").putData(data, metadata: nil, completion: { (metadata, err) in
-                if let error = err{
-                    print(error)
-                    return
-                }
-                let now = Date()
-                let formatter = DateFormatter()
-                formatter.timeZone = TimeZone.current
-                formatter.dateFormat = "HH:mm:ss"
-                let timeString = formatter.string(from: now)
-                
-                formatter.dateFormat = "yyyy-MM-dd"
-                let dateString = formatter.string(from: now)
-                
-//                self.chat.posts.removeAllObjects()
-//                self.sections.removeAllObjects()
-                
-                let ref = FirebaseHelper.ref.child("chats").child(self.chat.id).child("posts")
-                let childRef = ref.childByAutoId()
-                let values = ["image":id, "profileId":FirebaseHelper.personal.userId, "timestamp":timeString, "datestamp":dateString] as [String : Any]
-                childRef.updateChildValues(values)
-            })
+            let imageString = data.base64EncodedString()
+            let now = Date()
+            let formatter = DateFormatter()
+            formatter.timeZone = TimeZone.current
+            formatter.dateFormat = "HH:mm:ss"
+            let timeString = formatter.string(from: now)
+
+            formatter.dateFormat = "yyyy-MM-dd"
+            let dateString = formatter.string(from: now)
+
+            let ref = FirebaseHelper.ref.child("chats").child(self.chat.id).child("posts")
+            let childRef = ref.childByAutoId()
+            let values = ["image":imageString, "profileId":FirebaseHelper.personal.userId, "timestamp":timeString, "datestamp":dateString] as [String : Any]
+            childRef.updateChildValues(values)
         }
-    }
-    
-    func moveChatViews() {
-        self.menuBar.frame.origin = CGPoint(x: self.view.frame.size.width/4*3, y: 0)
-        self.joinChatLabel.frame.origin.x = self.view.frame.size.width/4*3
-        self.textView.frame.origin.x = self.view.frame.size.width/4*3
-        self.chatView.frame.origin.x = self.view.frame.size.width/4*3
-        self.sendingView.frame.origin.x = self.view.frame.size.width/4*3
-    }
-    
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-        
-    }
-    
-    func didDismiss() {
-        self.navigationController?.dismiss(animated: true, completion: nil)
-    }
-    
-    func chatTapped(_chat:Chat) {
-        self.chat = _chat
-        self.chat.posts.removeAllObjects()
-        self.chatNameLabel.text = _chat.chatName
-        self.sections = NSMutableArray()
-        FirebaseHelper.ref.removeObserver(withHandle: self.postsObserver!)
-        FirebaseHelper.ref.removeObserver(withHandle: self.membersObserver!)
-        self.fetchPosts(chatId: _chat.id)
-        self.fetchMembers(chatId: _chat.id)
-        self.chatView.reloadData()
-        StoreViewed.sharedInstance.addViewed(id: _chat.id)
-        self.navigationController?.dismiss(animated: true, completion: nil)
     }
     
     @IBAction func menuButtonTapped(_ sender: Any) {
         //display/hide side bar
         self.textView.endEditing(true)
-        selectionView.transitioningDelegate = self
-        self.navigationController?.present(selectionView, animated: true, completion: nil)
-        
-        
-//        let menuViewController = storyboard!.instantiateViewController(withIdentifier: "MenuViewController")
-//        menuViewController.modalPresentationStyle = .custom
-//        menuViewController.transitioningDelegate = self
-//
-//        presentationAnimator.animationDelegate = menuViewController as? GuillotineAnimationDelegate
-//        presentationAnimator.supportView = navigationController!.navigationBar
-//        presentationAnimator.presentButton = sender
-//        present(menuViewController, animated: true, completion: nil)
+        StoreViewed.sharedInstance.addViewed(id: chat.id)
+        self.navigationController?.popViewController(animated: true)
     }
     
     
@@ -432,9 +376,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             formatter.dateFormat = "yyyy-MM-dd"
             let dateString = formatter.string(from: now)
             
-//            sections.removeAllObjects()
-//            self.chat.posts.removeAllObjects()
-            
             let ref = FirebaseHelper.ref.child("chats").child(chat.id).child("posts")
             let childRef = ref.childByAutoId()
             let values = ["text":textView.text!, "profileId":FirebaseHelper.personal.userId, "timestamp":timeString, "datestamp":dateString] as [String : Any]
@@ -450,16 +391,64 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     //MARK: Move to new vc
     
     
+    @IBAction func settingsTapped(_ sender: Any) {
+        let vc = self.storyboard?.instantiateViewController(withIdentifier: "SettingsViewController") as! SettingsViewController
+        vc.delegate = self
+        self.navigationController?.present(vc, animated: true, completion: nil)
+        vc.setChat(chat: self.chat)
+    }
     
     @objc func moveToPlaceViewer(sender:UIButton){
         let vc = self.storyboard?.instantiateViewController(withIdentifier: "PlaceViewerViewController") as! PlaceViewerViewController
         let post = chat.posts.object(at: sender.tag) as! Post
         vc.setPlace(place: post.place as! GMSPlace)
-        self.navigationController?.pushViewController(vc, animated: true)
+        vc.delegate = self
+        self.navigationController?.present(vc, animated: true, completion: nil)
     }
     
+    func dismissPlace() {
+        self.navigationController?.dismiss(animated: true, completion: nil)
+    }
     
+    func dismissSettings(chat: Chat) {
+        let usersRef = FirebaseHelper.ref.child("chats").child(chat.id)
+        if self.chat!.members != chat.members{
+            let membersIds = NSMutableArray()
+            membersIds.add(FirebaseHelper.personal.userId)
+            for var member in self.members{
+                membersIds.add((member as! Profile).userId)
+            }//add members
+            usersRef.updateChildValues(["members":membersIds])//update Firebase
+            for var i in membersIds{
+                FirebaseHelper.ref.child("users").child(i as! String).observeSingleEvent(of: .value, with: { (user) in
+                    if let dict = user.value as? NSDictionary{
+                        var index = 0
+                        if (dict.allKeys as NSArray).contains("chats"){
+                            index = (dict["chats"] as! NSArray).count
+                        }
+                        user.ref.child("chats").updateChildValues(["\(index)":chat.id])
+                    }
+                })
+            }
+        }
+        if self.chat!.joinType != chat.joinType{
+            let values = ["joinType":chat.joinType] as [String : Any]//update join type
+            usersRef.updateChildValues(values, withCompletionBlock: { (err, ref) in
+                if err != nil{
+                    print(err)
+                    return
+                }
+            })
+        }
+        self.chat = chat
+        self.navigationController?.dismiss(animated: true, completion: nil)
+    }
     
+    func leftChat() {
+        self.navigationController?.dismiss(animated: false, completion: {
+            self.navigationController?.popViewController(animated: true)
+        })
+    }
     
     func textViewDidChange(_ textView: UITextView) {
         let numLines = floor(textView.contentSize.height/(textView.font?.lineHeight)!)
@@ -508,16 +497,9 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     }
     
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        if canDismiss && !changingLines && round(textView.frame.size.height) == round(textView.contentSize.height){
-            if keyboardUp == false{
-                textView.isEditable = false
-                return
-            }
-            
+        if canDismiss && !changingLines{
             self.dismissKeyboard()
             textView.isEditable = true
-        }else{
-//            canDismiss = false
         }
     }
     
@@ -552,6 +534,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             }
             if post.image == ""{
                 cell.bubbleWidthAnchor?.constant = estimateFrameForText(cell.textView.text!).width + 32
+                return cell
             }else{
                 loadImageUsingUrlString(post.image, image: { (success) in
                     cell.bubbleWidthAnchor?.constant = self.sizeForImage(image: success).width+32
@@ -559,23 +542,30 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             }
         }
         return cell
+
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        var startIndex = 0
-        var returnAmt:CGFloat = 0
-        for var i in 0..<indexPath.section{
-            startIndex += (sections.object(at: i) as! section).amt!
-        }
-        let post = chat.posts[startIndex+indexPath.item] as! Post
-        if post.image == ""{
-            return estimateFrameForText(post.text).height+26
+        if chat.posts.count > 0{
+            var startIndex = 0
+            var returnAmt:CGFloat = 0
+            for var i in 0..<indexPath.section{
+                startIndex += (sections.object(at: i) as! section).amt!
+            }
+            let post = chat.posts[startIndex+indexPath.row] as! Post
+            if let place = post.place as? GMSPlace{
+                return estimateFrameForText(place.name).height+26
+            }else if post.image == ""{
+                return estimateFrameForText(post.text).height+26
+            }else{
+                loadImageUsingUrlString(post.image, image: { (success) in
+                    returnAmt = (self.sizeForImage(image: success).height)+26
+                })
+            }
+            return returnAmt
         }else{
-            loadImageUsingUrlString(post.image, image: { (success) in
-                returnAmt = (self.sizeForImage(image: success).height)+26
-            })
+            return 0
         }
-        return returnAmt
     }
     
 
@@ -593,7 +583,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         label.backgroundColor = .clear
         label.textColor = .black
         label.frame = CGRect(x: 0, y: 0, width: tableView.frame.size.width, height: 50)
-        label.textColor = lightGray
+        label.textColor = .black
         label.font = UIFont(name: "Raleway", size: 12)
         label.text = "\(month) \(separatedDate[2]), \(separatedDate[0])"
         label.textAlignment = .center
@@ -613,19 +603,26 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         }
 
         if post.image != ""{
-//            let data = Data(base64Encoded: post.image, options: .ignoreUnknownCharacters)!
-//            let image = UIImage(data: data)!
-            
-            cell.messageImageView.loadImageUsingCacheWithUrlString(post.image)
+            loadImageUsingUrlString(post.image, image: { (image) in
+                cell.messageImageView.image = image
+                
+            })
             cell.button.frame.size = (cell.imageView?.frame.size)!
             cell.button.tag = index
             cell.button.addTarget(self, action: #selector(imageTapped(sender:)), for: .touchUpInside)
         }
         
         if post.profileId == FirebaseHelper.personal.userId {
-            //outgoing blue
+            //outgoing green
             cell.bubbleView.backgroundColor = darkBgColor
             cell.textView.textColor = UIColor.white
+            if let place = post.place as? GMSPlace{
+                
+//                let string = NSAttributedString(string: post.text, attributes: [NSAttributedStringKey.underlineStyle:NSUnderlineStyle.styleSingle.rawValue, NSAttributedStringKey.strokeColor:darkGray])
+//                cell.textView.attributedText = string
+                cell.textView.textColor = darkGray
+                
+            }
             cell.profileImageView.isHidden = true
 
             cell.bubbleViewRightAnchor?.isActive = true
@@ -637,10 +634,19 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             cell.textView.textColor = UIColor.black
             cell.profileImageView.isHidden = false
             cell.profileImageView.frame.origin.y = cell.bubbleView.frame.origin.y
-
+            if let place = post.place as? GMSPlace{
+                
+//                let string = NSAttributedString(string: post.text, attributes: [NSAttributedStringKey.underlineStyle:NSUnderlineStyle.styleSingle.rawValue, NSAttributedStringKey.strokeColor:blue])
+//                cell.textView.attributedText = string
+                
+                cell.textView.textColor = blue
+            }
+            
             cell.bubbleViewRightAnchor?.isActive = false
             cell.bubbleViewLeftAnchor?.isActive = true
         }
+        
+        
         
         if hasPlace{
             cell.button.tag = index
@@ -660,15 +666,4 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     }
 }
 
-extension ChatViewController: UIViewControllerTransitioningDelegate {
-    
-    func animationController(forPresented presented: UIViewController, presenting: UIViewController, source: UIViewController) -> UIViewControllerAnimatedTransitioning? {
-        presentationAnimator.mode = .presentation
-        return presentationAnimator
-    }
-    
-    func animationController(forDismissed dismissed: UIViewController) -> UIViewControllerAnimatedTransitioning? {
-        presentationAnimator.mode = .dismissal
-        return presentationAnimator
-    }
-}
+

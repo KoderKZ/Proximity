@@ -2,14 +2,13 @@
 //  ChatMessageCell.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 11/19/17.
-//  Copyright © 2017 Kevin Zhou. All rights reserved.
-//
+
+//BASED OFF OF CODE WITH CHRIS' FIREBASE CHAT TUTORIAL
 
 import UIKit
 
 class ChatMessageCell: UITableViewCell {
-    
+    //views in chat bubble
     let textView: UITextView = {
         let tv = UITextView()
         tv.text = "SAMPLE TEXT FOR NOW"
@@ -74,7 +73,7 @@ class ChatMessageCell: UITableViewCell {
         addSubview(textView)
         addSubview(profileImageView)
         addSubview(button)
-        
+        //sets up positioning
         bubbleView.addSubview(messageImageView)
         messageImageView.leftAnchor.constraint(equalTo: bubbleView.leftAnchor).isActive = true
         messageImageView.rightAnchor.constraint(equalTo: bubbleView.rightAnchor).isActive = true

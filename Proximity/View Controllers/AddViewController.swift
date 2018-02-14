@@ -9,60 +9,103 @@
 import Foundation
 import UIKit
 import Fuse
-class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSource{
+class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSource,SelectionViewDelegate{
     @IBOutlet weak var chatNameTextField: UITextField!
-    @IBOutlet weak var createChatButton: UIButton!
-    @IBOutlet weak var backButton: UIButton!
     @IBOutlet weak var titleLabel: UILabel!
-    var isFriends:Bool!
+    @IBOutlet weak var controlSegment: UISegmentedControl!
+    var isFriends:Bool = false
     var tableView:UITableView!
     var names = NSMutableDictionary()
+    var chats = NSMutableDictionary()
     var sortedNames = NSMutableArray()
     var images = NSMutableArray()
     var sentRequests = NSMutableArray()
     let fuse = Fuse()
+    var observer:UInt!
+    var selectionView:SelectionView!
+    @IBOutlet var titleBar: UIView!
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        createChatButton.layer.borderColor = UIColor.black.cgColor
-        createChatButton.layer.borderWidth = 1
-        createChatButton.layer.cornerRadius = 5
-        createChatButton.addTarget(self, action: #selector(createChatTapped), for: .touchUpInside)
-        createChatButton.isUserInteractionEnabled = true
-        
+
         let border = CALayer()
-        border.frame = CGRect(x: 0, y: chatNameTextField.frame.size.height, width: self.view.frame.size.width-(chatNameTextField.frame.origin.x*2), height: 1)
+        border.frame = CGRect(x: 0, y: titleBar.frame.size.height, width: view.frame.size.width, height: 2)
         border.backgroundColor = UIColor.black.cgColor
-        chatNameTextField.layer.addSublayer(border)
+        titleBar.layer.addSublayer(border)
         
-        tableView = UITableView(frame: CGRect(x: self.view.frame.size.width/14, y: chatNameTextField.frame.origin.y+chatNameTextField.frame.size.height*1.5, width: self.view.frame.size.width/7*6, height: self.view.frame.size.height/3*2))
+        chatAdded()
+        userAdded()
+        
+        tableView = UITableView(frame: CGRect(x: (self.view.frame.size.width-(controlSegment.frame.origin.x+controlSegment.frame.size.width))/2, y: controlSegment.frame.origin.y+controlSegment.frame.size.height*1.5, width: self.view.frame.size.width-(self.view.frame.size.width-(controlSegment.frame.origin.x+controlSegment.frame.size.width))*2, height: self.view.frame.size.height-(controlSegment.frame.origin.y+controlSegment.frame.size.height*1.5)))
         tableView.delegate = self
         tableView.dataSource = self
         self.view.addSubview(tableView)
         
         chatNameTextField.addTarget(self, action: #selector(updateSortedNames), for: .editingChanged)
         chatNameTextField.delegate = self
-        self.hideKeyboardWhenTappedAround()
-        
+//        self.hideKeyboardWhenTappedAround()
         if isFriends{
-            createChatButton.alpha = 0
-            titleLabel.text = "Add Friends"
-            userAdded()
+            controlSegment.selectedSegmentIndex = 1
         }else{
-            chatAdded()
+            
+        }
+        
+        let height:CGFloat = 75
+        let width = self.view.frame.size.width-30
+        selectionView = SelectionView(frame: CGRect(x: 15, y: self.view.frame.size.height-15-height, width: width, height: height))
+        selectionView.delegate = self
+        
+        controlSegment.tintColor = darkBgColor
+        
+        self.view.addSubview(selectionView)
+        
+        tableView.allowsSelection = true
+    }
+    
+    func selectionTapped(tag: Int) {
+        let selectionVC = self.navigationController?.viewControllers[1] as! SelectionViewController
+        
+        if tag < 2{
+        self.navigationController?.popViewController(animated: false)
+            selectionVC.tab = tag
+        }else if tag == 3{
+            let createVC = self.storyboard?.instantiateViewController(withIdentifier: "CreateChatViewController") as! CreateChatViewController
+            self.navigationController?.viewControllers = [(self.navigationController?.viewControllers[0])!, selectionVC, createVC]
+        }else if tag == 4{
+            let profileVC = self.storyboard?.instantiateViewController(withIdentifier: "ProfileViewController") as! ProfileViewController
+            profileVC.homeMenu = true
+            let chatArray = NSMutableArray()
+            for var chat in FirebaseHelper.personal.chats{
+                chatArray.add((chat as! Chat).id)
+            }
+            
+            let friendArray = NSMutableArray()
+            for var friend in FirebaseHelper.personal.friends{
+                friendArray.add((friend as! Profile).userId)
+            }
+            let selfProfile = Profile(username: FirebaseHelper.personal.username, userId: FirebaseHelper.personal.userId, friends: friendArray, icon: FirebaseHelper.personal.icon, chats: chatArray, latitude: FirebaseHelper.personal.latitude, longitude: FirebaseHelper.personal.longitude)
+            profileVC.setProfiles(profile: selfProfile, profiles: friendArray)
+            self.navigationController?.viewControllers = [(self.navigationController?.viewControllers[0])!, selectionVC, profileVC]
         }
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        tableView.frame.size.width = self.view.frame.size.width-controlSegment.frame.origin.x*2
+    }
+    
     func chatAdded(){
-        FirebaseHelper.ref.child("chatNames").observeSingleEvent(of: .value) { (snapshot) in
-            if let dict = snapshot.value as? NSDictionary{
-                self.names = dict as! NSMutableDictionary
-
+        FirebaseHelper.ref.child("chatNames").observe(.childAdded) { (snapshot) in
+            if let value = snapshot.value as? String{
+                if let key = snapshot.key as? String{
+                    let modifiedKey = key.substring(to: key.index(key.endIndex, offsetBy: -4))+"#"+key.substring(from: key.index(key.endIndex, offsetBy: -4))
+                    self.chats.addEntries(from: [modifiedKey:value])
+                }
             }
         }
     }
     
     func userAdded(){
-        FirebaseHelper.ref.child("names").observe(.childAdded) { (snapshot) in
+        observer = FirebaseHelper.ref.child("names").observe(.childAdded) { (snapshot) in
             if let value = snapshot.value as? String{
                 if let key = snapshot.key as? String{
                     self.names.addEntries(from: [key:value])
@@ -71,8 +114,10 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
                         FirebaseHelper.ref.child("users").child(id).observeSingleEvent(of: .value, with: { (user) in
                             if let dict = user.value as? NSDictionary{
                                 let image = UIImage(data: Data(base64Encoded: dict["icon"] as! String, options: .ignoreUnknownCharacters)!)
-                                self.images.add(image!)
-                                
+                                    self.images.add(image!)
+
+                                self.updateSortedNames()
+
                                 if let requests = dict["friendRequests"] as? NSArray{
                                     if requests.contains(FirebaseHelper.personal.userId){
                                         self.sentRequests.add(value)
@@ -86,30 +131,41 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
         }
     }
     
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        dismissKeyboard()
+    }
+    
     @objc func createChatTapped() {
         let vc = self.storyboard?.instantiateViewController(withIdentifier: "CreateChatViewController")
         self.navigationController?.pushViewController(vc!, animated: true)
     }
     
-    
-    @IBAction func backTapped(_ sender: Any) {
-        self.navigationController?.popViewController(animated: true)
+    @IBAction func changedType(_ sender: Any) {
+        isFriends = !isFriends
+        sortedNames.removeAllObjects()
+        if !isFriends{
+            if let ob = observer as? UInt{
+                FirebaseHelper.ref.removeObserver(withHandle: ob)
+            }
+        }
+        updateSortedNames()
+        
     }
     
     func numberOfSections(in tableView: UITableView) -> Int {
-        if !isFriends{
-            return sortedNames.count
-        }else{
-            return 1
-        }
+        return 1
+    }
+    
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        dismissKeyboard()
+    }
+    
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        dismissKeyboard()
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if !isFriends{
-            return (names[sortedNames[section]] as! NSArray).count
-        }else{
-            return sortedNames.count
-        }
+        return sortedNames.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -120,9 +176,9 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
             for var chat in FirebaseHelper.personal.chats{
                 chatArray.add((chat as! Chat).id)
             }
-            cell.textLabel?.text = sortedNames.object(at: indexPath.section) as? String
+            cell.textLabel?.text = sortedNames.object(at: indexPath.row) as? String
             cell.backgroundColor = .clear
-            if !chatArray.contains(((names[sortedNames[indexPath.section]] as! NSArray).object(at: indexPath.row) as! String)){
+            if !chatArray.contains(chats.object(forKey: sortedNames.object(at: indexPath.row))){
                 let joinChatButton = UIButton(frame: CGRect(x: tableView.frame.size.width-70, y: 0, width: 70, height: 60))
                 joinChatButton.setTitle("Add", for: .normal)
                 joinChatButton.setTitleColor(.black, for: .normal)
@@ -184,12 +240,9 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
         
     }
     
-    func textFieldDidBeginEditing(_ textField: UITextField) {
-        
-    }
-    
     @objc func acceptRequest(sender:UIButton){
         var finished = false
+        sender.removeFromSuperview()
         let _profile = FirebaseHelper.personal.friendRequests.object(at: sender.tag)
         FirebaseHelper.personal.friendRequests.remove(_profile)
         FirebaseHelper.personal.friends.add(_profile)
@@ -217,12 +270,13 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
     
     @objc func joinChat(sender:UIButton){
         var nameIndex = 0
-        for var i in 0..<names.count{
-            if sender.title(for: .normal) == names.allKeys[i] as! String{
+        for var i in 0..<chats.count{
+            if sender.title(for: .normal) == chats.allKeys[i] as! String{
                 nameIndex == i
             }
         }
-        let id = (names.object(forKey: sortedNames.object(at: nameIndex) as! String) as! NSArray)[sender.tag] as! String
+        sender.setTitle("Wating...", for: .normal)
+        let id = (chats.object(forKey: sortedNames.object(at: nameIndex) as! String) as! String)
         let ref = FirebaseHelper.ref.child("chats").child(id)
         ref.observeSingleEvent(of:.value) { (snapshot) in
             if let chat = snapshot.value as? [AnyHashable:Any]{
@@ -239,6 +293,7 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
                     FirebaseHelper.personal.chats.add(addChat)
                     FirebaseHelper.updatePersonal()
                     sender.setTitle("Joined", for: .normal)
+                    StoreViewed.sharedInstance.addObserver(chatId: id)
                 }else{
                     sender.setTitle("Closed", for: .normal)
                 }
@@ -248,34 +303,42 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
     
     @objc func updateSortedNames(){
         if chatNameTextField.text != ""{
+            var dict = NSMutableDictionary()
+            if isFriends{
+                dict = names
+            }else{
+                dict = chats
+            }
             let pattern = fuse.createPattern(from: chatNameTextField.text!)
             let scores = NSMutableDictionary()
+            let scoreArray = NSMutableArray()
             sortedNames.removeAllObjects()
-            for var i in 0..<names.allKeys.count{
-                let key = names.allKeys[i]
-                let value = names.object(forKey: key)
+            for var i in 0..<dict.allKeys.count{
+                let key = dict.allKeys[i]
+                let value = dict.object(forKey: key)
                 let result = fuse.search(pattern, in: key as! String)
                 if let score = (result?.score){
-                    scores.addEntries(from: ["\(score)":key as! String])
+                    scores.addEntries(from: [key as! String:"\(score)"])
+                    if !scoreArray.contains("\(score)"){
+                        scoreArray.add("\(score)")
+                    }
                 }
             }
-            let sortedScores = Array(scores.allKeys).sorted(by: ascending)
-            for var score in sortedScores{
+            for var i in 0..<scoreArray.count{
+                let score = scoreArray[i]
                 if Double(score as! String)! < 0.4{
-                    sortedNames.add(scores.object(forKey: score)!)
+                    for var i in 0..<scores.allKeys(for: score).count{
+                        sortedNames.add(scores.allKeys(for: score)[i] as! String)
+                    }
                 }
             }
-            
+            tableView.reloadData()
         }else{
             sortedNames.removeAllObjects()
         }
         tableView.reloadData()
+
     }
-    
-    func ascending(value1: Any, value2: Any) -> Bool {
-        return Double(value1 as! String)! < Double(value2 as! String)!
-    }
-    
     
     
     override func textFieldShouldReturn(_ textField: UITextField) -> Bool {

@@ -65,11 +65,16 @@ public struct Poll{
 }
 
 
+protocol StoreViewedDelegate{
+    func changedAmt()
+}
+
 class StoreViewed{
-    let defaults = UserDefaults.standard
-    let observerRefs = NSMutableDictionary()
+    let amtRefs = NSMutableDictionary()
+    let viewedRefs = NSMutableDictionary()
     var amtViewed = NSMutableDictionary()
     var postsAmt = NSMutableDictionary()
+    var delegate:StoreViewedDelegate!
     
     class var sharedInstance:StoreViewed {
         struct Singleton {
@@ -79,14 +84,7 @@ class StoreViewed{
         return Singleton.instance
     }
     
-    init(){
-        if let dict = defaults.dictionary(forKey: "viewed"){
-            amtViewed = dict as! NSMutableDictionary
-        }
-        if let dict2 = defaults.dictionary(forKey: "amt"){
-            postsAmt = dict2 as! NSMutableDictionary
-        }
-    }
+    init(){}
         
     func loggedIn(){
         for var i in FirebaseHelper.personal.chats{
@@ -96,36 +94,44 @@ class StoreViewed{
     }
     
     func addObserver(chatId:String){
-        let ref = FirebaseHelper.ref.child("chats").child(chatId).child("posts").observe(.childAdded, with: { (snapshot) in
+        let amtRef = FirebaseHelper.ref.child("chats").child(chatId).child("posts").observe(.value, with: { (snapshot) in
             if let dict = snapshot.value as? NSDictionary{
-                if let prevAmt = self.postsAmt.object(forKey: chatId) as? Int{
-                    self.postsAmt.addEntries(from: [chatId:prevAmt+1])
-                }else{
-                    self.postsAmt.addEntries(from: [chatId:1])
-                }
-                self.defaults.set(self.postsAmt, forKey: chatId)
-                self.addViewed(id: chatId)
+                self.postsAmt.removeObject(forKey: chatId)
+                self.postsAmt.addEntries(from: [chatId:dict.count])
+                self.delegate.changedAmt()
             }
         })
-        if !(observerRefs.allKeys as NSArray).contains(chatId){
-            observerRefs.addEntries(from: [chatId:ref])
+        let viewedRef = FirebaseHelper.ref.child("chats").child(chatId).child("viewed").child(FirebaseHelper.personal.userId).observe(.value, with: { (snapshot) in
+            if let viewed = snapshot.value as? NSDictionary{
+                self.amtViewed.removeObject(forKey: chatId)
+                self.amtViewed.addEntries(from: [chatId:viewed[FirebaseHelper.personal.userId]])
+                self.delegate.changedAmt()
+            }
+        })
+        if !(amtRefs.allKeys as NSArray).contains(chatId){
+            amtRefs.addEntries(from: [chatId:amtRef])
+        }
+        if !(viewedRefs.allKeys as NSArray).contains(chatId){
+            viewedRefs.addEntries(from: [chatId:viewedRef])
         }
     }
     
     func removeObserver(chatId:String) {
-        let observer = observerRefs.object(forKey: chatId) as! UInt
-        FirebaseHelper.ref.removeObserver(withHandle: observer)
-        observerRefs.removeObject(forKey: chatId)
+        let amtOb = amtRefs.object(forKey: chatId) as! UInt
+        FirebaseHelper.ref.removeObserver(withHandle: amtOb)
+        amtRefs.removeObject(forKey: chatId)
+        
+        let viewedOb = viewedRefs.object(forKey: chatId) as! UInt
+        FirebaseHelper.ref.removeObserver(withHandle: viewedOb)
+        viewedRefs.removeObject(forKey: chatId)
     }
     
     func addViewed(id:String){
         if (amtViewed.allKeys as NSArray).contains(id){
             amtViewed.removeObject(forKey: id)
         }
-        if amtViewed.object(forKey: id) != nil{
-            amtViewed.addEntries(from: [id:postsAmt.object(forKey: id)])
-            defaults.set(amtViewed, forKey: id)
-        }
+        amtViewed.addEntries(from: [id:"\(postsAmt.object(forKey: id))"])
+        FirebaseHelper.ref.child("chats").child(id).child("viewed").child(FirebaseHelper.personal.userId).updateChildValues([FirebaseHelper.personal.userId:postsAmt.object(forKey: id)])
     }
     
     func getNotViewed(id:String) -> Int{
@@ -187,10 +193,13 @@ class StoreLogin{
 
 public let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
+//color palatte
 public let darkBgColor = UIColor(displayP3Red: 0/255, green: 175/255, blue: 100/255, alpha: 1)
 public let blackBgColor = UIColor(displayP3Red: 0/255, green: 100/255, blue: 25/255, alpha: 1)
-public let bgColor = UIColor(displayP3Red: 0/255, green: 214/255, blue: 129/255, alpha: 1)
-public let lightBgColor = UIColor(displayP3Red: 200/255, green: 255/255, blue: 225/255, alpha: 1)
+public let bgColor = UIColor(displayP3Red: 72/255, green: 202/255, blue: 103/255, alpha: 1)
+public let lightBgColor = UIColor(displayP3Red: 73/255, green: 194/255, blue: 202/255, alpha: 1)
+public let red = UIColor(displayP3Red: 202/255, green: 82/255, blue: 73/255, alpha: 1)
+public let blue = UIColor(displayP3Red: 73/255, green: 97/255, blue: 202/255, alpha: 1)
 public let darkGray = UIColor(displayP3Red: 1/4, green: 1/4, blue: 1/4, alpha: 1)
 public let gray = UIColor(displayP3Red: 1/2, green: 1/2, blue: 1/2, alpha: 1)
 public let lightGray = UIColor(displayP3Red: 3/4, green: 3/4, blue: 3/4, alpha: 1)
@@ -198,6 +207,7 @@ public let lightGray = UIColor(displayP3Red: 3/4, green: 3/4, blue: 3/4, alpha: 
 
 
 extension UIView{
+    //sets gradient background for uiview, is actually layer
     func setGradientBackground(colorOne:UIColor, colorTwo:UIColor){
         let gradientLayer = CAGradientLayer()
         gradientLayer.frame.size = CGSize(width: bounds.size.width+bounds.size.height, height: bounds.size.height)
@@ -210,59 +220,54 @@ extension UIView{
     }
 }
 
+//cache images so don't have to load from Firebase each time
 let imageCache = NSCache<AnyObject, AnyObject>()
 
-extension UIImageView {
-    
-    func loadImageUsingCacheWithUrlString(_ urlString: String) {
 
-        loadImageUsingUrlString(urlString) { success in
-            self.image = success
-        }
-    }
-    
-}
-
-public func loadImageUsingUrlString(_ urlString: String, image: @escaping (UIImage) -> ()){
-    
-    
+public func loadImageUsingUrlString(_ imageString: String, image: @escaping (UIImage) -> ()){
     //check cache for image first
-    if let cachedImage = imageCache.object(forKey: urlString as AnyObject) as? UIImage {
+    if let cachedImage = imageCache.object(forKey: imageString as AnyObject) as? UIImage {
         image(cachedImage)
     }else{
-        FirebaseHelper.storageRef.child("images/\(urlString).jpeg").getData(maxSize: 50*(1024*1024), completion: { (data, err) in
-            if let error = err{
-                print("couldn't download image")
-                return
-            }
-            if let downloadedImage = UIImage(data: data!) {
-                imageCache.setObject(downloadedImage, forKey: urlString as AnyObject)
-            }
-        })
+//        FirebaseHelper.storageRef.child("images/\(urlString).jpeg").getData(maxSize: 50*(1024*1024), completion: { (data, err) in
+//            if let error = err{
+//                print("couldn't download image")
+//                return
+//            }
+//            if let downloadedImage = UIImage(data: data!) {
+//                imageCache.setObject(downloadedImage, forKey: urlString as AnyObject)
+//                image(downloadedImage)
+//            }
+//        })
+        let newImage = UIImage(data: Data(base64Encoded: imageString)!)!
+        imageCache.setObject(newImage, forKey: imageString as AnyObject)
+        image(newImage)
     }
     
 }
+
 
 extension UITableView {
     func reloadData(completion: @escaping ()->()) {
-        UIView.animate(withDuration: 0, animations: { self.reloadData() })
+        UIView.animate(withDuration: 0, animations: { self.reloadData() })//completion block for reload data
         { _ in completion() }
     }
 }
 
-public func delay(_ delay:Double, closure:@escaping ()->()) {
+public func delay(_ delay:Double, closure:@escaping ()->()) {//delay block
     DispatchQueue.main.asyncAfter(
         deadline: DispatchTime.now() + Double(Int64(delay * Double(NSEC_PER_SEC))) / Double(NSEC_PER_SEC), execute: closure)
 }
 
 extension UITextView {
     
-    func centerVertically() {
+    func centerVertically() {//sets content insets from top to center text
         let fittingSize = CGSize(width: bounds.width, height: CGFloat.greatestFiniteMagnitude)
         let size = sizeThatFits(fittingSize)
-        let topOffset = (bounds.size.height - size.height * zoomScale)
+        
+        let topOffset = (bounds.size.height - size.height)/2
         let positiveTopOffset = max(1, topOffset)
-        contentOffset.y = positiveTopOffset
+        contentInset.top = positiveTopOffset
     }
     
     override open func setContentOffset(_ contentOffset: CGPoint, animated: Bool) {
@@ -276,7 +281,7 @@ extension UITextView {
 
 //extra extension for keyboard dismiss
 extension UIViewController:UITextFieldDelegate {
-    func hideKeyboardWhenTappedAround() {
+    func hideKeyboardWhenTappedAround() {//registers when tapped, will dismiss
         let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(UIViewController.dismissKeyboard))
         tap.cancelsTouchesInView = false
         view.addGestureRecognizer(tap)
@@ -292,14 +297,14 @@ extension UIViewController:UITextFieldDelegate {
     }
 }
 
-func loginProcess(username:String, password:String, vc: ChatViewController, error: @escaping (Error) -> (), finished: @escaping (ChatViewController) -> ()){
+let profileIcons = NSMutableDictionary()//profile icons used in chatvc, loaded in log in
+
+func loginProcess(username:String, password:String, error: @escaping (Error) -> (), finished: @escaping (Bool) -> ()){//log in process
     Auth.auth().signIn(withEmail: username, password: password) { (user, err) in
         if err != nil{
-            error(err!)
+            error(err!)//exits with error
         }
         let ref = FirebaseHelper.ref.child("users").child((user?.uid)!)
-        //            let chats = ref.child("chats").
-//        let navigationController = AppDelegate.navi
         var icon = ""
         var username = ""
         var latitude:Double = 0
@@ -315,7 +320,7 @@ func loginProcess(username:String, password:String, vc: ChatViewController, erro
         var actualFriendsAmount = 0
         var finishedFriendRequests = false
                 
-        ref.observeSingleEvent(of: .value, with: { (snapshot1) in
+        ref.observeSingleEvent(of: .value, with: { (snapshot1) in//gets all values for user, pushes to selection vc outside
             if let dictionary = snapshot1.value as? [String:AnyObject]{
                 icon = dictionary["icon"] as! String
                 latitude = dictionary["latitude"] as! Double
@@ -337,14 +342,14 @@ func loginProcess(username:String, password:String, vc: ChatViewController, erro
                                 if let members = dictionary["members"]{
                                     chat.members = members as! NSMutableArray
                                     for var j in chat.members{
-                                        if vc.profileIcons.object(forKey: j as! String) == nil{
+                                        if profileIcons.object(forKey: j as! String) == nil{
                                             requiredIconAmt += 1
                                             FirebaseHelper.ref.child("users").child(j as! String).observeSingleEvent(of:.value, with: { (snapshot) in
                                                 if let profile = snapshot.value as? [String:AnyObject] {
-                                                    vc.profileIcons.addEntries(from: [(j as! String): profile["icon"]])
+                                                    profileIcons.addEntries(from: [(j as! String): profile["icon"]])
                                                     actualIconAmt += 1
                                                     if requiredIconAmt == actualIconAmt && finishedRequests == 1 && finishedFriendRequests{
-                                                        finished(vc)
+                                                        finished(true)
                                                     }else if requiredIconAmt == actualIconAmt && finishedRequests == 0{
                                                         finishedRequests += 1
                                                     }
@@ -360,54 +365,54 @@ func loginProcess(username:String, password:String, vc: ChatViewController, erro
                 }else{
                     finishedRequests += 1
                 }
-                ref.child("friends").observeSingleEvent(of: .value, with: { (snapshot4) in
-                    if let friendArray = snapshot4.value as? NSArray{
-                        actualFriendsAmount = friendArray.count
-                        for var i in friendArray{
+            })
+            ref.child("friends").observeSingleEvent(of: .value, with: { (snapshot4) in
+                if let friendArray = snapshot4.value as? NSArray{
+                    actualFriendsAmount = friendArray.count
+                    for var i in friendArray{
+                        FirebaseHelper.ref.child("users").child(i as! String).observeSingleEvent(of:.value, with: { (snapshot) in
+                            if let dictionary = snapshot.value as? [String:AnyObject]{
+                                var chats = NSMutableArray()
+                                var tempFriendArray = NSMutableArray()
+                                if dictionary.keys.contains("friends"){tempFriendArray = dictionary["friends"] as! NSMutableArray}
+                                if dictionary.keys.contains("chats"){chats = dictionary["chats"] as! NSMutableArray}
+                                let friend = Profile(username: dictionary["username"] as! String, userId: i as! String, friends: tempFriendArray, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
+                                friends.add(friend)
+                                finishedFriends += 1
+                                if finishedFriends == friendArray.count && finishedRequests == 1 && finishedFriendRequests{
+                                    FirebaseHelper.personal.friends = friends
+                                    finished(true)
+                                }else if finishedFriends == friendArray.count && finishedRequests == 0{
+                                    finishedRequests += 1
+                                }
+                            }
+                        })
+                    }
+                }else{
+                    finishedRequests += 1
+                }
+                
+                ref.child("friendRequests").observeSingleEvent(of: .value, with: { (snapshot5) in
+                    if let array = snapshot5.value as? NSArray{
+                        for var i in array{
                             FirebaseHelper.ref.child("users").child(i as! String).observeSingleEvent(of:.value, with: { (snapshot) in
                                 if let dictionary = snapshot.value as? [String:AnyObject]{
                                     var friends = NSMutableArray()
                                     var chats = NSMutableArray()
+                                    if dictionary.keys.contains("friends"){friends = dictionary["friends"] as! NSMutableArray}
                                     if dictionary.keys.contains("chats"){chats = dictionary["chats"] as! NSMutableArray}
-                                    var friend = Profile(username: dictionary["username"] as! String, userId: i as! String, friends: friends, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
-                                    friends.add(friend)
-                                    finishedFriends += 1
-                                    if finishedFriends == friendArray.count && finishedRequests == 1 && finishedFriendRequests{
-                                        FirebaseHelper.personal.friends = friends
-                                        finished(vc)
-                                    }else if finishedFriends == friendArray.count && finishedRequests == 0{
-                                        finishedRequests += 1
-                                    }
+                                    let friend = Profile(username: dictionary["username"] as! String, userId: i as! String, friends: friends, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
+                                    friendRequests.add(friend)
                                 }
                             })
                         }
-                    }else{
-                        finishedRequests += 1
                     }
-                    
-                    ref.child("friendRequests").observeSingleEvent(of: .value, with: { (snapshot5) in
-                        if let array = snapshot5.value as? NSArray{
-                            for var i in array{
-                                FirebaseHelper.ref.child("users").child(i as! String).observeSingleEvent(of:.value, with: { (snapshot) in
-                                    if let dictionary = snapshot.value as? [String:AnyObject]{
-                                        var friends = NSMutableArray()
-                                        var chats = NSMutableArray()
-                                        if dictionary.keys.contains("friends"){friends = dictionary["friends"] as! NSMutableArray}
-                                        if dictionary.keys.contains("chats"){chats = dictionary["chats"] as! NSMutableArray}
-                                        var friend = Profile(username: dictionary["username"] as! String, userId: i as! String, friends: friends, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
-                                        friendRequests.add(friend)
-                                    }
-                                })
-                            }
-                        }
-                        finishedFriendRequests = true
-                        FirebaseHelper.personal = Personal(username: username, userId: (user?.uid)!, friendRequests: friendRequests, email: username, friends: friends, icon: icon, chats: chats, latitude: latitude, longitude: longitude)
-                        if actualIconAmt == requiredIconAmt{
-                            finished(vc)
-                        }
-                    })
+                    finishedFriendRequests = true
+                    FirebaseHelper.personal = Personal(username: username, userId: (user?.uid)!, friendRequests: friendRequests, email: username, friends: friends, icon: icon, chats: chats, latitude: latitude, longitude: longitude)
+                    if actualIconAmt == requiredIconAmt{
+                        finished(true)
+                    }
                 })
-                
             })
         })
     }

@@ -15,14 +15,15 @@ import GooglePlaces
 import GoogleMaps
 
 class FirebaseHelper{
+    //global vars for Firebase
     static var personalRegion = CGPoint(x:-1,y:-1)
     static var personal:Personal!
     static var nearbyProfiles = NSMutableArray()
     static var ref = Database.database().reference()
     static var placesClient = GMSPlacesClient()
     static var storageRef = Storage.storage().reference()
+    //updates personal in Firebase
     static func updatePersonal(){
-        
         let usersRef = ref.child("users").child(personal.userId)
         let userValues = ["username":personal.username,"email":personal.email,"icon":personal.icon,"latitude":personal.latitude,"longitude":personal.longitude] as [String : Any]
         usersRef.updateChildValues(userValues, withCompletionBlock: { (err, ref) in

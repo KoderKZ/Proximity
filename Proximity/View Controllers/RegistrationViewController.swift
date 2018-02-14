@@ -20,6 +20,7 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
     @IBOutlet weak var errorLabel: UILabel!
     var image:UIImage!
     override func viewDidLoad() {
+        //set up ui/default values
         self.hideKeyboardWhenTappedAround()
         self.view.setGradientBackground(colorOne: .white, colorTwo: lightGray)
         usernameTextField.returnKeyType = .done
@@ -46,7 +47,7 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
         confirmPasswordTextField.layer.addSublayer(border4)
         
         chooseImageButton.backgroundColor = .clear
-        chooseImageButton.layer.cornerRadius = chooseImageButton.frame.size.height/2
+
         chooseImageButton.layer.borderWidth = 3
         chooseImageButton.layer.borderColor = UIColor.black.cgColor
         
@@ -73,11 +74,13 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
     }
     
     override func viewWillAppear(_ animated: Bool) {
-        chooseImageButton.frame.size.height = chooseImageButton.frame.size.width
+        //set up ui
+        chooseImageButton.layer.cornerRadius = (self.view.frame.size.width-chooseImageButton.frame.origin.x*2)/2
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
+        //
         if image != nil{
             chooseImageButton.setBackgroundImage(image!, for: .normal)
             chooseImageButton.setTitle("", for: .normal)
@@ -86,6 +89,7 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
     
     @IBAction func chooseImageTapped(_ sender: Any) {
         if UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
+            //push to image picker
             let imagePicker = UIImagePickerController()
             imagePicker.delegate = self
             imagePicker.sourceType = .photoLibrary
@@ -94,6 +98,7 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
         }
     }
     
+    //image picker delegate functions
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         dismiss(animated: true, completion: nil)
     }
@@ -104,34 +109,44 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
         let image = info[UIImagePickerControllerEditedImage] as! UIImage
         self.image = image
     }
-    @IBAction func backTapped(_ sender: Any) {
+    
+    @IBAction func backTapped(_ sender: Any) {//pops current vc
         self.navigationController?.popViewController(animated: true)
     }
     @IBAction func finishButtonTapped(_ sender: Any) {
         errorLabel.alpha = 0
         
         if passwordTextField.text! == confirmPasswordTextField.text!{
+            //checks if passwords match
             if chooseImageButton.backgroundImage(for: .normal) != nil && usernameTextField.text != nil && emailTextField.text != nil && passwordTextField.text != nil{
+                //checks if everything is filled in
                 Auth.auth().createUser(withEmail: emailTextField.text!, password: passwordTextField.text!) { (user, error) in
+                    //Firebase helps create user, now push to selectionVc
                     if error != nil{
                         self.errorLabel.text = error?.localizedDescription
                         self.errorLabel.alpha = 1
+                        self.errorLabel.baselineAdjustment = .alignCenters
+                        
                         return
                     }
-                    let vc = self.storyboard?.instantiateViewController(withIdentifier: "ChatViewController")
+                    let vc = self.storyboard?.instantiateViewController(withIdentifier: "SelectionViewController")
+                    //set user
                     FirebaseHelper.personal = Personal(username: self.usernameTextField.text!, userId: FirebaseHelper.personal.userId, friendRequests: NSMutableArray(), email: self.emailTextField.text!, friends: NSMutableArray(), icon: (UIImageJPEGRepresentation(self.chooseImageButton.backgroundImage(for: .normal)!, 1.0)?.base64EncodedString())!, chats: NSMutableArray(), latitude: 0, longitude: 0)
                     self.navigationController?.pushViewController(vc!, animated: true)
                     FirebaseHelper.updatePersonal()
                 }
-
                 FirebaseHelper.ref.child("names").updateChildValues([FirebaseHelper.personal.username:FirebaseHelper.personal.userId])
             }else{
+                //print error message
                 errorLabel.alpha = 1
                 errorLabel.text = "Please fill in everything"
+                errorLabel.baselineAdjustment = .alignCenters
             }
         }else{
+            //print error message
             errorLabel.alpha = 1
             errorLabel.text = "Passwords do not match"
+            errorLabel.baselineAdjustment = .alignCenters
         }
     }
 }
