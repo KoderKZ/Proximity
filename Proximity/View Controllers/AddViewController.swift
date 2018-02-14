@@ -12,7 +12,6 @@ import Fuse
 class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSource,SelectionViewDelegate{
     @IBOutlet weak var chatNameTextField: UITextField!
     @IBOutlet weak var titleLabel: UILabel!
-    @IBOutlet weak var controlSegment: UISegmentedControl!
     var isFriends:Bool = false
     var tableView:UITableView!
     var names = NSMutableDictionary()
@@ -23,8 +22,11 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
     let fuse = Fuse()
     var observer:UInt!
     var selectionView:SelectionView!
+    var indicator:UIView!
     @IBOutlet var titleBar: UIView!
     
+    @IBOutlet var chatsButton: UIButton!
+    @IBOutlet var peopleButton: UIButton!
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -36,7 +38,7 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
         chatAdded()
         userAdded()
         
-        tableView = UITableView(frame: CGRect(x: (self.view.frame.size.width-(controlSegment.frame.origin.x+controlSegment.frame.size.width))/2, y: controlSegment.frame.origin.y+controlSegment.frame.size.height*1.5, width: self.view.frame.size.width-(self.view.frame.size.width-(controlSegment.frame.origin.x+controlSegment.frame.size.width))*2, height: self.view.frame.size.height-(controlSegment.frame.origin.y+controlSegment.frame.size.height*1.5)))
+        tableView = UITableView(frame: CGRect(x: 0, y: chatsButton.frame.origin.y+chatsButton.frame.size.height, width: self.view.frame.size.width, height: self.view.frame.size.height-(chatsButton.frame.origin.y+chatsButton.frame.size.height*1.5)), style:.grouped)
         tableView.delegate = self
         tableView.dataSource = self
         self.view.addSubview(tableView)
@@ -44,18 +46,19 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
         chatNameTextField.addTarget(self, action: #selector(updateSortedNames), for: .editingChanged)
         chatNameTextField.delegate = self
 //        self.hideKeyboardWhenTappedAround()
-        if isFriends{
-            controlSegment.selectedSegmentIndex = 1
-        }else{
-            
-        }
+        
+        indicator = UIView(frame: CGRect(x: chatsButton.frame.origin.x, y: chatsButton.frame.origin.y+chatsButton.frame.size.height, width: chatsButton.frame.size.width, height: 1))
+        indicator.backgroundColor = darkBgColor
+        self.view.addSubview(indicator)
+        
+        chatsButton.setTitleColor(darkBgColor, for: .normal)
+        peopleButton.setTitleColor(darkBgColor, for: .normal)
         
         let height:CGFloat = 75
         let width = self.view.frame.size.width-30
         selectionView = SelectionView(frame: CGRect(x: 15, y: self.view.frame.size.height-15-height, width: width, height: height))
         selectionView.delegate = self
-        
-        controlSegment.tintColor = darkBgColor
+        selectionView.setTab(tab: 2)
         
         self.view.addSubview(selectionView)
         
@@ -89,10 +92,7 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
         }
     }
 
-    override func viewWillAppear(_ animated: Bool) {
-        tableView.frame.size.width = self.view.frame.size.width-controlSegment.frame.origin.x*2
-    }
-    
+
     func chatAdded(){
         FirebaseHelper.ref.child("chatNames").observe(.childAdded) { (snapshot) in
             if let value = snapshot.value as? String{
@@ -135,12 +135,7 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
         dismissKeyboard()
     }
     
-    @objc func createChatTapped() {
-        let vc = self.storyboard?.instantiateViewController(withIdentifier: "CreateChatViewController")
-        self.navigationController?.pushViewController(vc!, animated: true)
-    }
-    
-    @IBAction func changedType(_ sender: Any) {
+    func changedType() {
         isFriends = !isFriends
         sortedNames.removeAllObjects()
         if !isFriends{
@@ -150,6 +145,23 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
         }
         updateSortedNames()
         
+    }
+    
+    @IBAction func chatsTapped(_ sender: Any) {
+        changedType()
+        UIView.animate(withDuration: 0.25) {
+            self.indicator.frame.origin.x = self.chatsButton.frame.origin.x
+            self.indicator.frame.size.width = self.chatsButton.frame.size.width
+        }
+    }
+    
+    
+    @IBAction func peopleTapped(_ sender: Any) {
+        changedType()
+        UIView.animate(withDuration: 0.25) {
+            self.indicator.frame.origin.x = self.peopleButton.frame.origin.x
+            self.indicator.frame.size.width = self.peopleButton.frame.size.width
+        }
     }
     
     func numberOfSections(in tableView: UITableView) -> Int {

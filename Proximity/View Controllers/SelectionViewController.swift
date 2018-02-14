@@ -51,10 +51,12 @@ class SelectionViewController:UIViewController,UITableViewDataSource,UITableView
         
     }
 
+    
     func selectionTapped(tag: Int) {
         if tag < 2{
             tab = tag
             tableView.reloadData()
+            selectionView.setTab(tab: tag)
         }else if tag == 2{
             let addVC = self.storyboard?.instantiateViewController(withIdentifier: "AddViewController") as! AddViewController
             self.navigationController?.pushViewController(addVC, animated: false)
@@ -86,6 +88,7 @@ class SelectionViewController:UIViewController,UITableViewDataSource,UITableView
     //reloads table view
     override func viewWillAppear(_ animated: Bool) {
         tableView.reloadData()
+        selectionView.setTab(tab: tab)
     }
     
     //reset buttons

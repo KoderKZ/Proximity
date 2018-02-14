@@ -11,8 +11,9 @@ import UIKit
 class StartingViewController:UIViewController{//loading vc
 
     override func viewDidLoad() {
-
-        self.view.backgroundColor = bgColor
+        
+        self.view.backgroundColor = UIColor(displayP3Red: 144/255, green: 238/255, blue: 144/255, alpha: 1)
+        
         if StoreLogin.sharedInstance.getUsername() != "" && StoreLogin.sharedInstance.getPassword() != ""{//see if has existing login
             let chatVc = self.storyboard?.instantiateViewController(withIdentifier: "ChatViewController") as! ChatViewController
             loginProcess(username: StoreLogin.sharedInstance.getUsername(), password: StoreLogin.sharedInstance.getPassword(), error: { (err) in

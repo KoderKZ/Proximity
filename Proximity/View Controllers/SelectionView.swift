@@ -15,12 +15,15 @@ class SelectionView:UIView{
     var createButton:UIButton!
     var profileButton:UIButton!
     let margin:CGFloat = 15
+    var tab = 0
+    var width:CGFloat!
+    var indicator:UIView!
     var delegate:SelectionViewDelegate!
     required override init(frame:CGRect) {
         super.init(frame: frame)
         self.backgroundColor = darkBgColor
         self.layer.cornerRadius = self.frame.size.height/2
-        let width = (self.frame.size.width-(margin*6))/5
+        width = (self.frame.size.width-(margin*6))/5
         let yCoord = self.frame.size.height/2-width/2
         chatsButton = UIButton(frame: CGRect(x: margin, y: yCoord, width: width, height: width))
         chatsButton.tag = 0
@@ -53,6 +56,12 @@ class SelectionView:UIView{
         createButton.showsTouchWhenHighlighted = false
         profileButton.showsTouchWhenHighlighted = false
         
+        chatsButton.adjustsImageWhenHighlighted = false
+        friendsButton.adjustsImageWhenHighlighted = false
+        searchButton.adjustsImageWhenHighlighted = false
+        createButton.adjustsImageWhenHighlighted = false
+        profileButton.adjustsImageWhenHighlighted = false
+        
         chatsButton.addTarget(self, action: #selector(tappedSelectionButton(sender:)), for: .touchUpInside)
         friendsButton.addTarget(self, action: #selector(tappedSelectionButton(sender:)), for: .touchUpInside)
         searchButton.addTarget(self, action: #selector(tappedSelectionButton(sender:)), for: .touchUpInside)
@@ -65,10 +74,21 @@ class SelectionView:UIView{
         addSubview(createButton)
         addSubview(profileButton)
         
+        let x = (margin*CGFloat(tab+1))+(width*CGFloat(Double(tab)+0.5))
+        indicator = UIView(frame: CGRect(x: x-(width/8*3), y: self.frame.size.height-10, width: width/4*3, height: 3))
+        indicator.backgroundColor = .white
+        indicator.layer.cornerRadius = 1.5
+        addSubview(indicator)
     }
     
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    func setTab(tab:Int) {
+        self.tab = tab
+        let x = (margin*CGFloat(tab+1))+(width*CGFloat(Double(tab)+0.5))
+        indicator.frame.origin.x = x-(width/8*3)
     }
     
     @objc func tappedSelectionButton(sender:UIButton){

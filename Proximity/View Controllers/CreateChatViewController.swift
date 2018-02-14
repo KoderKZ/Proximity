@@ -10,8 +10,6 @@ import Foundation
 import UIKit
 class CreateChatViewController:UIViewController,UITableViewDataSource,UITableViewDelegate,SelectionViewDelegate{
     @IBOutlet weak var chatNameTextField: UITextField!
-    @IBOutlet weak var joinTypeSegment: UISegmentedControl!
-    @IBOutlet weak var addMembersButton: UIButton!
     @IBOutlet weak var createButton: UIButton!
     var membersTable:UITableView!
     var addTable:UITableView!
@@ -19,6 +17,9 @@ class CreateChatViewController:UIViewController,UITableViewDataSource,UITableVie
     let friendsToAdd:NSMutableArray = NSMutableArray()
     var selectionView:SelectionView!
     @IBOutlet var titleBar: UIView!
+    @IBOutlet var joinSwitch: UISwitch!
+    @IBOutlet var joinLabel: UILabel!
+    @IBOutlet var membersTitle: UILabel!
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -28,29 +29,37 @@ class CreateChatViewController:UIViewController,UITableViewDataSource,UITableVie
         border.backgroundColor = UIColor.black.cgColor
         titleBar.layer.addSublayer(border)
         
-        membersTable = UITableView(frame: CGRect(x: joinTypeSegment.frame.origin.x, y: joinTypeSegment.frame.origin.y+joinTypeSegment.frame.size.height*1.5, width: self.view.frame.size.width-(joinTypeSegment.frame.origin.x*2), height: addMembersButton.frame.origin.y-joinTypeSegment.frame.origin.y))
+        let height:CGFloat = 75
+        let width = self.view.frame.size.width-30
+        selectionView = SelectionView(frame: CGRect(x: 15, y: self.view.frame.size.height-15-height, width: width, height: height))
+        selectionView.delegate = self
+        selectionView.setTab(tab: 3)
+        
+        membersTable = UITableView(frame: CGRect(x: joinLabel.frame.origin.x, y: membersTitle.frame.origin.y+membersTitle.frame.size.height+10, width: self.view.frame.size.width-(joinLabel.frame.origin.x*2), height: selectionView.frame.origin.y-membersTitle.frame.origin.y))
 
         self.view.addSubview(membersTable)
         membersTable.delegate = self
         membersTable.dataSource = self
         
-        addTable = UITableView(frame: CGRect(x: joinTypeSegment.frame.origin.x, y: joinTypeSegment.frame.origin.y+joinTypeSegment.frame.size.height*1.5, width: self.view.frame.size.width-(joinTypeSegment.frame.origin.x*2), height: addMembersButton.frame.origin.y-joinTypeSegment.frame.origin.y))
         
-        self.view.addSubview(addTable)
-        addTable.delegate = self
-        addTable.dataSource = self
-        addTable.alpha = 0
-        self.view.addSubview(addTable)
+        
+//        let border3 = CALayer()
+//        border3.frame = CGRect(x: 0, y: 0, width: chatNameTextField.frame.size.width, height: 2)
+//        border3.backgroundColor = UIColor.black.cgColor
+//        chatNameTextField.layer.addSublayer(border3)
+        
+//        addTable = UITableView(frame: CGRect(x: joinTypeSegment.frame.origin.x, y: joinTypeSegment.frame.origin.y+joinTypeSegment.frame.size.height*1.5, width: self.view.frame.size.width-(joinTypeSegment.frame.origin.x*2), height: addMembersButton.frame.origin.y-joinTypeSegment.frame.origin.y))
+//
+//        self.view.addSubview(addTable)
+//        addTable.delegate = self
+//        addTable.dataSource = self
+//        addTable.alpha = 0
+//        self.view.addSubview(addTable)
         self.hideKeyboardWhenTappedAround()
         chatNameTextField.delegate = self
-        
-        let height:CGFloat = 75
-        let width = self.view.frame.size.width-30
-        selectionView = SelectionView(frame: CGRect(x: 15, y: self.view.frame.size.height-15-height, width: width, height: height))
-        selectionView.delegate = self
+
         self.view.addSubview(selectionView)
         
-        joinTypeSegment.tintColor = darkBgColor
         
         membersTable.allowsSelection = false
         
@@ -108,7 +117,11 @@ class CreateChatViewController:UIViewController,UITableViewDataSource,UITableVie
                 for var i in 0..<4-string.count{
                     string = "0"+string
                 }
-                let values = ["chatName":self.chatNameTextField.text!+" #\(string)","joinType":self.joinTypeSegment.selectedSegmentIndex] as [String : Any]//chat info
+                var joinType = 1
+                if self.joinSwitch.isOn{
+                    joinType = 0
+                }
+                let values = ["chatName":self.chatNameTextField.text!+" #\(string)","joinType":joinType] as [String : Any]//chat info
                 usersRef.updateChildValues(values, withCompletionBlock: { (err, ref) in
                     if err != nil{
                         print(err)
@@ -119,7 +132,7 @@ class CreateChatViewController:UIViewController,UITableViewDataSource,UITableVie
                     for var member in self.members{
                         membersIds.add((member as! Profile).userId)
                     }//add members
-                    let chat = Chat(id: String(refStringArray[refStringArray.count-1]), chatName: self.chatNameTextField.text!+" #\(string)", joinType: self.joinTypeSegment.selectedSegmentIndex, members: membersIds, posts: NSMutableArray())//update local profile
+                    let chat = Chat(id: String(refStringArray[refStringArray.count-1]), chatName: self.chatNameTextField.text!+" #\(string)", joinType: joinType, members: membersIds, posts: NSMutableArray())//update local profile
                     FirebaseHelper.personal.chats.add(chat)
                     usersRef.updateChildValues(["members":membersIds])//update Firebase
                     
@@ -149,30 +162,30 @@ class CreateChatViewController:UIViewController,UITableViewDataSource,UITableVie
         
     }
     
-    @IBAction func addMembersTapped(_ sender: Any) {
-        //show addmembers/table
-        if addMembersButton.titleLabel?.text == "Add Members"{
-            UIView.animate(withDuration: 0.2, animations: {
-                self.membersTable.alpha = 0
-            }, completion: { (true) in
-                UIView.animate(withDuration: 0.2, animations: {
-                    self.addTable.alpha = 1
-                })
-            })
-            addMembersButton.setTitle("Cancel", for: .normal)
-            addMembersButton.setTitleColor(.red, for: .normal)
-        }else{
-            UIView.animate(withDuration: 0.2, animations: {
-                self.addTable.alpha = 0
-            }, completion: { (true) in
-                UIView.animate(withDuration: 0.2, animations: {
-                    self.membersTable.alpha = 1
-                })
-            })
-            addMembersButton.setTitle("Add Members", for: .normal)
-            addMembersButton.setTitleColor(.black, for: .normal)
-        }
-    }
+//    @IBAction func addMembersTapped(_ sender: Any) {
+//        //show addmembers/table
+//        if addMembersButton.titleLabel?.text == "Add Members"{
+//            UIView.animate(withDuration: 0.2, animations: {
+//                self.membersTable.alpha = 0
+//            }, completion: { (true) in
+//                UIView.animate(withDuration: 0.2, animations: {
+//                    self.addTable.alpha = 1
+//                })
+//            })
+//            addMembersButton.setTitle("Cancel", for: .normal)
+//            addMembersButton.setTitleColor(.red, for: .normal)
+//        }else{
+//            UIView.animate(withDuration: 0.2, animations: {
+//                self.addTable.alpha = 0
+//            }, completion: { (true) in
+//                UIView.animate(withDuration: 0.2, animations: {
+//                    self.membersTable.alpha = 1
+//                })
+//            })
+//            addMembersButton.setTitle("Add Members", for: .normal)
+//            addMembersButton.setTitleColor(.black, for: .normal)
+//        }
+//    }
 
     
     
@@ -194,18 +207,20 @@ class CreateChatViewController:UIViewController,UITableViewDataSource,UITableVie
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if tableView == membersTable{
+        if section == 0{
             return members.count
         }else{
             return friendsToAdd.count
         }
     }
     
+    
+    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         //sets up label and profile image view
         let cell = UITableViewCell(style: .default, reuseIdentifier: "cell")
         var array:NSArray
-        if tableView == membersTable{
+        if indexPath.section == 0{
             array = members
         }else{
             array = friendsToAdd
@@ -217,7 +232,13 @@ class CreateChatViewController:UIViewController,UITableViewDataSource,UITableVie
         imageView.layer.cornerRadius = imageView.frame.size.width/2
         imageView.layer.masksToBounds = true
         cell.contentView.addSubview(imageView)
-        if tableView == addTable{
+        if indexPath.section == 0 && indexPath.row == members.count-1{
+            let border = CALayer()
+            border.frame = CGRect(x: 0, y: 60, width: cell.frame.size.width, height: 2)
+            border.backgroundColor = UIColor.black.cgColor
+            cell.layer.addSublayer(border)
+        }
+        if indexPath.section == 1{
             if !members.contains(friendsToAdd.object(at: indexPath.row)){
                 let button = UIButton(frame: cell.frame)
                 button.backgroundColor = .clear
@@ -238,36 +259,16 @@ class CreateChatViewController:UIViewController,UITableViewDataSource,UITableVie
         return 60
     }
     
-    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        //header for tableview
-        let label = UILabel(frame: CGRect(x: 5, y: 5, width: 60, height: 60))
-        label.backgroundColor = .white
-        if tableView == membersTable{
-            label.text = "Members"
-        }else{
-            label.text = "Add Members"
-        }
-        return label
-        
-    }
     
     func numberOfSections(in tableView: UITableView) -> Int {
-        return 1
+        return 2
     }
     
     @objc func userTapped(sender:UIButton) {
         friendsToAdd.removeObject(at: sender.tag)
-        UIView.animate(withDuration: 0.2, animations: {
-            self.addTable.alpha = 0
-        }, completion: { (true) in
-            self.addTable.reloadData()
-            UIView.animate(withDuration: 0.2, animations: {
-                self.membersTable.alpha = 1
-            })
-        })
         
-        addMembersButton.setTitleColor(.black, for: .normal)
-        addMembersButton.setTitle("Add Members", for: .normal)
+//        addMembersButton.setTitleColor(.black, for: .normal)
+//        addMembersButton.setTitle("Add Members", for: .normal)
         if !self.members.contains(FirebaseHelper.personal.friends.object(at: sender.tag)){
             self.members.add(FirebaseHelper.personal.friends.object(at: sender.tag))
         }

@@ -246,7 +246,20 @@ public func loadImageUsingUrlString(_ imageString: String, image: @escaping (UII
     
 }
 
-
+import UIKit.UIGestureRecognizerSubclass
+class SingleTouchDownGestureRecognizer: UIGestureRecognizer{
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        if self.state == .possible{
+            self.state = .recognized
+        }
+    }
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
+        self.state = .failed
+    }
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
+        self.state = .failed
+    }
+}
 extension UITableView {
     func reloadData(completion: @escaping ()->()) {
         UIView.animate(withDuration: 0, animations: { self.reloadData() })//completion block for reload data

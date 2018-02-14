@@ -84,9 +84,15 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
             let width = self.view.frame.size.width-30
             selectionView = SelectionView(frame: CGRect(x: 15, y: self.view.frame.size.height-15-height, width: width, height: height))
             selectionView.delegate = self
+            selectionView.setTab(tab: 4)
             self.view.addSubview(selectionView)
             tableView.frame.size.height -= selectionView.frame.size.height+selectionView.margin*2
         }
+    }
+    
+    override func viewDidLayoutSubviews() {
+        regularProfileViewOrigin = profileView.frame.origin
+        regularMapViewHeight = mapView.frame.size.height
     }
     
     func selectionTapped(tag: Int) {
@@ -151,8 +157,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
-        regularProfileViewOrigin = profileView.frame.origin
-        regularMapViewHeight = mapView.frame.size.height
+
     }
     
     func setProfiles(profile:Profile,profiles:NSMutableArray) {

@@ -23,12 +23,9 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     @IBOutlet weak var chatView: UITableView!
     @IBOutlet var imageButton: UIButton!
     var chat:Chat!
-    var changingLines = false
     var displayImageView:DisplayImageView!
     let members:NSMutableArray = NSMutableArray()
     var postAmount = 0
-    var canDismiss = true
-    var keyboardUp = false
     var postsObserver:UInt!
     var membersObserver:UInt!
     var statusBarHidden:Bool = false{
@@ -55,10 +52,9 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     override func viewDidLoad() {
         
         
-        let tap: UITapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(tableViewTapped))
-        tap.cancelsTouchesInView = false
-        chatView.addGestureRecognizer(tap)
-
+        let tapDown: SingleTouchDownGestureRecognizer = SingleTouchDownGestureRecognizer(target: self, action: #selector(tableViewTappedDown))
+        tapDown.cancelsTouchesInView = false
+        chatView.addGestureRecognizer(tapDown)
     
         
         //set up side bar for selecting chats
@@ -70,14 +66,14 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         menuButton.adjustsImageWhenHighlighted = false
         settingsButton.adjustsImageWhenHighlighted = false
         
-        chatView.backgroundColor = lightBgColor
+        chatView.backgroundColor = .white
         
         textView.backgroundColor = .white
         textView.textColor = .black
         textView.delegate = self
         textView.centerVertically()
         sendButton.backgroundColor = .white
-        sendButton.setTitleColor(blackBgColor, for: .normal)
+        sendButton.setTitleColor(darkBgColor, for: .normal)
         imageButton.backgroundColor = .white
         sendingView.backgroundColor = .white
         
@@ -92,7 +88,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide), name: NSNotification.Name.UIKeyboardWillHide, object: nil)
 
         let profile = Profile(username: FirebaseHelper.personal.username, userId: FirebaseHelper.personal.userId, friends: FirebaseHelper.personal.friends, icon: FirebaseHelper.personal.icon, chats: FirebaseHelper.personal.chats, latitude: FirebaseHelper.personal.latitude, longitude: FirebaseHelper.personal.longitude)
-        
         chatView.separatorColor = .clear
         chatView.allowsSelection = false
         
@@ -102,21 +97,26 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         textView.frame.size.height = sendingView.frame.size.height
         textView.frame.origin.y = sendingView.frame.size.height/2-textView.frame.size.height/2
         self.textView.contentSize = textView.frame.size
-        textView.frame.size.width = sendingView.frame.size.width-imageButton.frame.size.width-sendButton.frame.size.width
         
+        
+        imageButton.imageView?.image = imageButton.imageView?.image!.withRenderingMode(.alwaysTemplate)
+        imageButton.imageView?.tintColor = darkBgColor
+//        theImageView.image = theImageView.image!.withRenderingMode(.alwaysTemplate)
+//        theImageView.tintColor = UIColor.red
 
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
         textView.isEditable = true
-        canDismiss = true
         self.chatView.reloadData()
 
     }
 
 
-
+    override func viewDidLayoutSubviews() {
+        textView.frame.origin.y = 0
+    }
     override func viewWillAppear(_ animated: Bool) {
 
         
@@ -133,7 +133,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             self.view.isUserInteractionEnabled = true
             chatNameLabel.text = chat.chatName
 
-            textView.frame.origin.y = 0
+            textView.frame.size.width = self.view.frame.size.width-imageButton.frame.size.width-sendButton.frame.size.width
 
             let border = CALayer()
             border.frame = CGRect(x: textView.frame.size.width-1, y: 0, width: 1, height: 1000)
@@ -144,6 +144,16 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             border2.frame = CGRect(x: 0, y: 0, width: 1, height: 1000)
             border2.backgroundColor = UIColor.black.cgColor
             textView.layer.addSublayer(border2)
+            
+            let border3 = CALayer()
+            border3.frame = CGRect(x: 0, y: 0, width: self.view.frame.size.width, height: 1)
+            border3.backgroundColor = UIColor.black.cgColor
+            sendingView?.layer.addSublayer(border3)
+            
+            let border4 = CALayer()
+            border4.frame = CGRect(x: 0, y: menuBar.frame.size.height, width: self.view.frame.size.width, height: 1)
+            border4.backgroundColor = UIColor.black.cgColor
+            menuBar.layer.addSublayer(border4)
         }
     }
 
@@ -249,7 +259,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                     if self.postAmount == self.chat.posts.count{
                         self.chatView.reloadData(){
                             self.menuButton.isEnabled = true
-                            self.canDismiss = true
                         }
                         let indexPath = IndexPath(row: (self.sections.object(at: self.sections.count-1) as! section).amt-1, section: self.sections.count-1)
                         self.chatView.scrollToRow(at: indexPath, at: .bottom, animated: true)
@@ -268,41 +277,32 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     //MARK: Keyboard Updaters
     
     @objc func keyboardWillShow(notification:NSNotification){
-        if let viewController = self.navigationController?.topViewController as? ChatViewController{
-            canDismiss = false
-            let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
-            let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
-            self.chatView.frame.size.height = self.chatView.frame.size.height-keyboardFrame.size.height
-            UIView.animate(withDuration: keyboardDuration, animations: {
-                self.sendingView.frame.origin.y = keyboardFrame.origin.y-self.sendingView.frame.size.height
-            }, completion: { (true) in
-                delay(0.5){
-                    self.canDismiss = true
-                    self.keyboardUp = true
-                }
-            })
-            self.textView.isEditable = true
-        }
+        let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
+        let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
+        self.chatView.frame.size.height = self.chatView.frame.size.height-keyboardFrame.size.height
+//            self.chatView.scrollto
+        var lastIndex = IndexPath(row: (sections[sections.count-1] as! section).amt-1, section: sections.count-1)
+        self.chatView.scrollToRow(at: lastIndex, at: .bottom, animated: false)
+        UIView.animate(withDuration: keyboardDuration, animations: {
+            self.sendingView.frame.origin.y = keyboardFrame.origin.y-self.sendingView.frame.size.height
+        })
+        self.textView.isEditable = true
     }
     
     @objc func keyboardWillHide(notification:NSNotification){
-        if let viewController =  self.navigationController?.topViewController as? ChatViewController{
-            if canDismiss{
-                keyboardUp = false
-                let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
-                let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
-                self.chatView.frame.size.height = self.chatView.frame.size.height+keyboardFrame.size.height
-                UIView.animate(withDuration: keyboardDuration, animations: {
-                    self.sendingView.frame.origin.y = self.view.frame.size.height-self.sendingView.frame.size.height
-                }, completion: { (true) in
-                    self.canDismiss = true
-                    self.textView.isEditable = true
-                })
-            }
-        }
+            let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
+            let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
+            self.chatView.frame.size.height = self.chatView.frame.size.height+keyboardFrame.size.height
+            UIView.animate(withDuration: keyboardDuration, animations: {
+                self.sendingView.frame.origin.y = self.view.frame.size.height-self.sendingView.frame.size.height
+            }, completion: { (true) in
+                self.textView.isEditable = true
+            })
     }
     
     //MARK: Button Actions
+    
+    
     
     @objc func imageTapped(sender:UIButton){
         let post = self.chat.posts.object(at: sender.tag) as! Post
@@ -454,7 +454,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         let numLines = floor(textView.contentSize.height/(textView.font?.lineHeight)!)
         let prevLines = floor(textView.frame.size.height/(textView.font?.lineHeight)!)
         if numLines > prevLines{
-            changingLines = true
             let size = textView.sizeThatFits(CGSize(width: textView.frame.size.width, height: CGFloat(MAXFLOAT)))
             sendingView.frame.origin.y += sendingView.frame.size.height-size.height
             sendingView.frame.size.height = size.height
@@ -462,14 +461,8 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             self.textView.frame.size.height = rect.size.height
             self.textView.contentSize.height = rect.size.height
             textView.centerVertically()
-            canDismiss = false
             self.chatView.frame.size.height += sendingView.frame.size.height-size.height
-            self.canDismiss = true
-            delay(1){
-                self.changingLines = false
-            }
         }else if numLines < prevLines{
-            changingLines = true
             let size = textView.sizeThatFits(CGSize(width: textView.frame.size.width, height: CGFloat(MAXFLOAT)))
             sendingView.frame.origin.y += sendingView.frame.size.height-size.height
             sendingView.frame.size.height = size.height
@@ -477,12 +470,8 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             self.textView.frame.size.height = rect.size.height
             self.textView.contentSize.height = rect.size.height
             textView.centerVertically()
-            canDismiss = false
             self.chatView.frame.size.height += sendingView.frame.size.height-size.height
-            self.canDismiss = true
-            delay(1){
-                self.changingLines = false
-            }
+
         }
 
     }
@@ -490,26 +479,24 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     
     //MARK: TableView methods
     
-    @objc func tableViewTapped(){
-        if canDismiss && keyboardUp{
-            dismissKeyboard()
-        }
+    @objc func tableViewTappedDown(){
+        dismissKeyboard()
     }
     
-    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-        if canDismiss && !changingLines{
-            self.dismissKeyboard()
-            textView.isEditable = true
-        }
-    }
+//    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+//        if canDismiss && !changingLines && tappedDown{
+//            self.dismissKeyboard()
+//            textView.isEditable = true
+//        }
+//    }
     
-    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-        textView.isEditable = true
-    }
-    
-    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-        textView.isEditable = true
-    }
+//    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+//        textView.isEditable = true
+//    }
+//
+//    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+//        textView.isEditable = true
+//    }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return (sections.object(at: section) as! section).amt
@@ -618,9 +605,9 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             cell.textView.textColor = UIColor.white
             if let place = post.place as? GMSPlace{
                 
-//                let string = NSAttributedString(string: post.text, attributes: [NSAttributedStringKey.underlineStyle:NSUnderlineStyle.styleSingle.rawValue, NSAttributedStringKey.strokeColor:darkGray])
-//                cell.textView.attributedText = string
-                cell.textView.textColor = darkGray
+                let string = NSAttributedString(string: cell.textView.text!, attributes: [NSAttributedStringKey.underlineStyle:NSUnderlineStyle.styleSingle.rawValue, NSAttributedStringKey.strokeColor:darkGray,NSAttributedStringKey.font:cell.textView.font])
+                cell.textView.attributedText = string
+//                cell.textView.textColor = darkGray
                 
             }
             cell.profileImageView.isHidden = true
@@ -636,10 +623,11 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             cell.profileImageView.frame.origin.y = cell.bubbleView.frame.origin.y
             if let place = post.place as? GMSPlace{
                 
-//                let string = NSAttributedString(string: post.text, attributes: [NSAttributedStringKey.underlineStyle:NSUnderlineStyle.styleSingle.rawValue, NSAttributedStringKey.strokeColor:blue])
-//                cell.textView.attributedText = string
+                let string = NSAttributedString(string: cell.textView.text!, attributes: [NSAttributedStringKey.underlineStyle:NSUnderlineStyle.styleSingle.rawValue, NSAttributedStringKey.strokeColor:blue,NSAttributedStringKey.font:cell.textView.font])
                 
-                cell.textView.textColor = blue
+                cell.textView.attributedText = string
+                
+//                cell.textView.textColor = blue
             }
             
             cell.bubbleViewRightAnchor?.isActive = false
