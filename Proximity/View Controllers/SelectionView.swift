@@ -2,9 +2,6 @@
 //  SelectionView.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 2/13/18.
-//  Copyright © 2018 Kevin Zhou. All rights reserved.
-//
 
 import Foundation
 import UIKit
@@ -20,6 +17,7 @@ class SelectionView:UIView{
     var indicator:UIView!
     var delegate:SelectionViewDelegate!
     required override init(frame:CGRect) {
+        //sets up tabs to click on
         super.init(frame: frame)
         self.backgroundColor = darkBgColor
         self.layer.cornerRadius = self.frame.size.height/2
@@ -45,11 +43,6 @@ class SelectionView:UIView{
         profileButton.tag = 4
         profileButton.setImage(UIImage(named:"profile"), for: .normal)
         
-//        chatsButton.backgroundColor = UIColor.black
-//        friendsButton.backgroundColor = UIColor.black
-//        searchButton.backgroundColor = UIColor.black
-//        createButton.backgroundColor = UIColor.black
-//        profileButton.backgroundColor = UIColor.black
         chatsButton.showsTouchWhenHighlighted = false
         friendsButton.showsTouchWhenHighlighted = false
         searchButton.showsTouchWhenHighlighted = false
@@ -86,13 +79,14 @@ class SelectionView:UIView{
     }
     
     func setTab(tab:Int) {
+        //move indicator to selected tab
         self.tab = tab
         let x = (margin*CGFloat(tab+1))+(width*CGFloat(Double(tab)+0.5))
         indicator.frame.origin.x = x-(width/8*3)
     }
     
     @objc func tappedSelectionButton(sender:UIButton){
-        delegate.selectionTapped(tag: sender.tag)
+        delegate.selectionTapped(tag: sender.tag)//delegates function to other vc
     }
     
     

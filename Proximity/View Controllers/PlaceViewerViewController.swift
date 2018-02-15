@@ -2,9 +2,6 @@
 //  PlaceViewerViewController.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 12/13/17.
-//  Copyright © 2017 Kevin Zhou. All rights reserved.
-//
 
 import Foundation
 import UIKit
@@ -124,11 +121,15 @@ class PlaceViewerViewController:UIViewController,UITableViewDataSource,UITableVi
         let childRef = ref.childByAutoId()
         let values = ["profileId":FirebaseHelper.personal.userId, "timestamp":timeString, "datestamp":dateString,"place": place.placeID] as [String : Any]
         childRef.updateChildValues(values)
+        
+        UIView.animate(withDuration: 0.5, animations: {//go back to place viewer
+            self.sendToView.frame.origin.y = self.infoView.frame.size.height
+        })
     }
     
 
     @IBAction func sendTapped(_ sender: Any) {
-        UIView.animate(withDuration: 0.5) {
+        UIView.animate(withDuration: 0.5) {//send to view pops up
             self.sendToView.frame.origin.y = self.infoView.subviews[2].frame.size.height
         }
     }
@@ -137,13 +138,14 @@ class PlaceViewerViewController:UIViewController,UITableViewDataSource,UITableVi
     func setPlace(place:GMSPlace) {
         self.place = place
     }
+    
     @IBAction func dismissTapped(_ sender: Any) {
         UIView.animate(withDuration: 0.5, animations: {//go back to place viewer
             self.sendToView.frame.origin.y = self.infoView.frame.size.height
         })
     }
     @IBAction func backTapped(_ sender: Any) {
-        if delegate != nil{
+        if delegate != nil{//depends on if in chat view, dismisses either way
             delegate.dismissPlace()
         }else{
             self.navigationController?.popViewController(animated: true)

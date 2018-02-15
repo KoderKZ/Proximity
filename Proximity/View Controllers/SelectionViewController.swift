@@ -2,10 +2,6 @@
 //  SelectionView.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 11/5/17.
-//  Copyright © 2017 Kevin Zhou. All rights reserved.
-//
-
 import Foundation
 import UIKit
 
@@ -40,6 +36,7 @@ class SelectionViewController:UIViewController,UITableViewDataSource,UITableView
         self.tableView.reloadData()
         
         chatAdded()
+        friendAdded()
         
         StoreViewed.sharedInstance.delegate = self
         
@@ -52,7 +49,7 @@ class SelectionViewController:UIViewController,UITableViewDataSource,UITableView
     }
 
     
-    func selectionTapped(tag: Int) {
+    func selectionTapped(tag: Int) {//move to vc based on tab tapped
         if tag < 2{
             tab = tag
             tableView.reloadData()
@@ -119,6 +116,31 @@ class SelectionViewController:UIViewController,UITableViewDataSource,UITableView
             }
         }
     }
+    func friendAdded(){
+        //observer for when new friend is added, will be displayed
+        FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("friends").observe(.childAdded) { (snapshot) in
+            if let id = snapshot.value as? String{
+                let ids = NSMutableArray()
+                for var i in FirebaseHelper.personal.friends{
+                    let chat = i as! Profile
+                    ids.add(chat.userId)
+                }
+                if !ids.contains(id){
+                    FirebaseHelper.ref.child("users").child(id).observeSingleEvent(of: .value, with: { (prof) in
+                        if let dictionary = prof.value as? NSDictionary{
+                        
+                            var friends = NSMutableArray()
+                            if let friendsArr = dictionary["friends"] as? NSMutableArray{friends = friendsArr}
+                            var chats = NSMutableArray()
+                            if let chatsArr = dictionary["chats"] as? NSMutableArray{chats = chatsArr}
+                            let profile = Profile(username: dictionary["username"] as! String, userId: id, friends: friends, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
+                            FirebaseHelper.personal.friends.add(profile)
+                        }
+                    })
+                }
+            }
+        }
+    }
     
     
     func setUpLabels(cellHeight:CGFloat) {
@@ -148,36 +170,7 @@ class SelectionViewController:UIViewController,UITableViewDataSource,UITableView
         StoreViewed.sharedInstance.addViewed(id: chat.id)
     }
 
-    //MARK: Move to new vc
-//    @objc func moveToSelfProfile(){//move to personal viewer vc
-//        let vc = self.storyboard?.instantiateViewController(withIdentifier: "ProfileViewController") as! ProfileViewController
-//        let chatArray = NSMutableArray()
-//        for var chat in FirebaseHelper.personal.chats{
-//            chatArray.add((chat as! Chat).id)
-//        }
-//
-//        let friendArray = NSMutableArray()
-//        for var friend in FirebaseHelper.personal.friends{
-//            friendArray.add((friend as! Profile).userId)
-//        }
-//        let selfProfile = Profile(username: FirebaseHelper.personal.username, userId: FirebaseHelper.personal.userId, friends: friendArray, icon: FirebaseHelper.personal.icon, chats: chatArray, latitude: FirebaseHelper.personal.latitude, longitude: FirebaseHelper.personal.longitude)
-//        vc.setProfiles(profile: selfProfile, profiles: friendArray)
-//        self.navigationController?.pushViewController(vc, animated: true)
-//
-//    }
-//
-//    @objc func moveToAddViewController(sender:UIButton){//move to add vc-depends on friends or chats
-//        let vc = self.storyboard?.instantiateViewController(withIdentifier: "AddViewController") as! AddViewController
-//        vc.chatAdded()
-//        vc.userAdded()
-//        if sender.tag == 0{
-//            vc.isFriends = false
-//        }else{
-//            vc.isFriends = true
-//        }
-//        self.navigationController?.pushViewController(vc, animated: true)
-//    }
-//
+
     @objc func moveToProfileViewController(sender:UIButton){//move to other profile viewer
         for var i in FirebaseHelper.personal.friends{
             let prof = i as! Profile
@@ -230,6 +223,7 @@ class SelectionViewController:UIViewController,UITableViewDataSource,UITableView
                 notCircle.layer.masksToBounds = true
                 cell.contentView.addSubview(notCircle)
             }else{
+                //arrow image to show its a button
                 let arrowImage = UIImageView(frame: CGRect(x: cell.frame.size.width+50, y: cell.frame.size.height/2, width: 7.5, height: 15))
                 arrowImage.image = UIImage(named: "rightArrow")
                 cell.contentView.addSubview(arrowImage)
@@ -243,6 +237,7 @@ class SelectionViewController:UIViewController,UITableViewDataSource,UITableView
             label.text = (FirebaseHelper.personal.friends.object(at: indexPath.row) as! Profile).username
             let size = label.sizeThatFits(CGSize(width:1000,height:1000))
 
+            //profile picture image view
             let imageData = NSData(base64Encoded: (FirebaseHelper.personal.friends.object(at: indexPath.row) as! Profile).icon , options: .ignoreUnknownCharacters)
             let imageView = UIImageView(image: UIImage(data: imageData! as Data))
             imageView.frame = CGRect(x: 5, y: 5, width: 50, height: 50)
@@ -258,6 +253,8 @@ class SelectionViewController:UIViewController,UITableViewDataSource,UITableView
             cell.contentView.addSubview(label)
             cell.contentView.addSubview(button)
             cell.contentView.addSubview(imageView)
+            
+            //arrow image to show its a button
             let arrowImage = UIImageView(frame: CGRect(x: cell.frame.size.width+50, y: cell.frame.size.height/2, width: 7.5, height: 15))
             arrowImage.image = UIImage(named: "rightArrow")
             cell.contentView.addSubview(arrowImage)
@@ -278,7 +275,7 @@ class SelectionViewController:UIViewController,UITableViewDataSource,UITableView
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        let view = UIView()
+        let view = UIView()//set up headers to distinguish different tabs
         view.frame = CGRect(x: 0, y: 0, width: tableView.frame.size.width, height: 60)
         let label = UILabel(frame: CGRect(x: 0, y: 0, width: tableView.frame.size.width, height: 60))
         label.font = UIFont(name: "Arial", size: UIFont.systemFontSize+10)
@@ -301,7 +298,7 @@ class SelectionViewController:UIViewController,UITableViewDataSource,UITableView
     }
     
     func numberOfSections(in tableView: UITableView) -> Int {
-        return 1
+        return 1//will only have one displayed at a time
     }
     
     //dismiss chat vc

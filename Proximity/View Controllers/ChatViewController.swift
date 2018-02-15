@@ -2,9 +2,6 @@
 //  ChatViewController.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 11/5/17.
-//  Copyright © 2017 Kevin Zhou. All rights reserved.
-//
 
 import Foundation
 import UIKit
@@ -103,14 +100,12 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         imageButton.imageView?.tintColor = darkBgColor
 //        theImageView.image = theImageView.image!.withRenderingMode(.alwaysTemplate)
 //        theImageView.tintColor = UIColor.red
-
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
         textView.isEditable = true
         self.chatView.reloadData()
-
     }
 
 
@@ -178,6 +173,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             }
             if self.members.count < self.chat.members.count{
                 contains = false
+                self.settingsButton.isEnabled = false
             }
             if !contains{
                 FirebaseHelper.ref.child("users").child(snapshot.value as! String).observeSingleEvent(of:.value, with: { (snapshot2) in
@@ -188,6 +184,9 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                         if dictionary.keys.contains("chats"){chats = dictionary["chats"] as! NSMutableArray}
                         let profile = Profile(username: dictionary["username"] as! String, userId: snapshot.value as! String, friends: friends, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
                         self.members.add(profile)
+                        if self.members.count == self.chat.members.count{
+                            self.settingsButton.isEnabled = true
+                        }
                     }
                 })
             }
@@ -280,9 +279,10 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
         let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
         self.chatView.frame.size.height = self.chatView.frame.size.height-keyboardFrame.size.height
-//            self.chatView.scrollto
-        var lastIndex = IndexPath(row: (sections[sections.count-1] as! section).amt-1, section: sections.count-1)
-        self.chatView.scrollToRow(at: lastIndex, at: .bottom, animated: false)
+        if sections.count > 0{
+            let lastIndex = IndexPath(row: (sections[sections.count-1] as! section).amt-1, section: sections.count-1)
+            self.chatView.scrollToRow(at: lastIndex, at: .bottom, animated: false)
+        }
         UIView.animate(withDuration: keyboardDuration, animations: {
             self.sendingView.frame.origin.y = keyboardFrame.origin.y-self.sendingView.frame.size.height
         })
@@ -303,7 +303,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     //MARK: Button Actions
     
     
-    
+    //enlarge image
     @objc func imageTapped(sender:UIButton){
         let post = self.chat.posts.object(at: sender.tag) as! Post
         loadImageUsingUrlString(post.image) { (image) in
@@ -313,17 +313,23 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         displayImageView.appear()
     }
     
+    //image picker helper
     @IBAction func sendImageTapped(_ sender: Any) {
         if UIImagePickerController.isSourceTypeAvailable(.photoLibrary) {
             let imagePicker = UIImagePickerController()
             imagePicker.delegate = self
             imagePicker.sourceType = .photoLibrary
             self.present(imagePicker, animated: true, completion: nil)
+            imageButton.imageView?.image = imageButton.imageView?.image!.withRenderingMode(.alwaysTemplate)
+            self.imageButton.tintColor = darkBgColor
         }
     }
     
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
         dismiss(animated: true, completion: nil)
+        imageButton.imageView?.image = imageButton.imageView?.image!.withRenderingMode(.alwaysTemplate)
+        self.imageButton.tintColor = darkBgColor
+
     }
     
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
@@ -345,6 +351,8 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             let childRef = ref.childByAutoId()
             let values = ["image":imageString, "profileId":FirebaseHelper.personal.userId, "timestamp":timeString, "datestamp":dateString] as [String : Any]
             childRef.updateChildValues(values)
+            imageButton.imageView?.image = imageButton.imageView?.image!.withRenderingMode(.alwaysTemplate)
+            self.imageButton.tintColor = darkBgColor
         }
     }
     
@@ -365,7 +373,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     }
 
     
-    @IBAction func sendTapped(_ sender: Any) {
+    @IBAction func sendTapped(_ sender: Any) {//send message
         if textView.text! != ""{
             let now = Date()
             let formatter = DateFormatter()
@@ -395,7 +403,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         let vc = self.storyboard?.instantiateViewController(withIdentifier: "SettingsViewController") as! SettingsViewController
         vc.delegate = self
         self.navigationController?.present(vc, animated: true, completion: nil)
-        vc.setChat(chat: self.chat)
+        vc.setChat(chat: self.chat, memberProfs: self.members)
     }
     
     @objc func moveToPlaceViewer(sender:UIButton){
@@ -410,11 +418,10 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         self.navigationController?.dismiss(animated: true, completion: nil)
     }
     
-    func dismissSettings(chat: Chat) {
+    func dismissSettings(chat: Chat) {//put settings in effect
         let usersRef = FirebaseHelper.ref.child("chats").child(chat.id)
         if self.chat!.members != chat.members{
             let membersIds = NSMutableArray()
-            membersIds.add(FirebaseHelper.personal.userId)
             for var member in self.members{
                 membersIds.add((member as! Profile).userId)
             }//add members
@@ -426,7 +433,9 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                         if (dict.allKeys as NSArray).contains("chats"){
                             index = (dict["chats"] as! NSArray).count
                         }
-                        user.ref.child("chats").updateChildValues(["\(index)":chat.id])
+                        if !(dict["chats"] as! NSArray).contains(chat.id){
+                            user.ref.child("chats").updateChildValues(["\(index)":chat.id])
+                        }
                     }
                 })
             }
@@ -450,7 +459,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         })
     }
     
-    func textViewDidChange(_ textView: UITextView) {
+    func textViewDidChange(_ textView: UITextView) {//resize textview
         let numLines = floor(textView.contentSize.height/(textView.font?.lineHeight)!)
         let prevLines = floor(textView.frame.size.height/(textView.font?.lineHeight)!)
         if numLines > prevLines{
@@ -477,33 +486,17 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     }
     
     
-    //MARK: TableView methods
     
     @objc func tableViewTappedDown(){
-        dismissKeyboard()
+        dismissKeyboard()//will dismiss keyboard when tap inside chat view
     }
-    
-//    func scrollViewDidScroll(_ scrollView: UIScrollView) {
-//        if canDismiss && !changingLines && tappedDown{
-//            self.dismissKeyboard()
-//            textView.isEditable = true
-//        }
-//    }
-    
-//    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
-//        textView.isEditable = true
-//    }
-//
-//    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-//        textView.isEditable = true
-//    }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return (sections.object(at: section) as! section).amt
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-
+        //set up post bubble
         let cell = ChatMessageCell(style: .default, reuseIdentifier: "cell")
         var startIndex = 0
         cell.backgroundColor = .clear
@@ -511,6 +504,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             startIndex += (sections.object(at: i) as! section).amt!
         }
         if chat.posts.count > startIndex+indexPath.item{
+            //set up text or content based on what type of post
             let post = chat.posts[startIndex+indexPath.item] as! Post
             if let place = post.place as? String{
                 cell.textView.text = post.text
@@ -519,6 +513,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                 cell.textView.text = (post.place as! GMSPlace).name
                 setupCell(cell, post: post, hasPlace: true, index: startIndex+indexPath.item)
             }
+            //set up width according to content
             if post.image == ""{
                 cell.bubbleWidthAnchor?.constant = estimateFrameForText(cell.textView.text!).width + 32
                 return cell
@@ -533,6 +528,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        //set up height according to content
         if chat.posts.count > 0{
             var startIndex = 0
             var returnAmt:CGFloat = 0
@@ -561,6 +557,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        //set up header for each individual date, posts within that date will be under it
         let text = (sections.object(at: section) as! section).date!
         let separatedDate = text.split(separator: "-")
         let month = months[Int(separatedDate[1])!-1]
@@ -571,7 +568,8 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
         label.textColor = .black
         label.frame = CGRect(x: 0, y: 0, width: tableView.frame.size.width, height: 50)
         label.textColor = .black
-        label.font = UIFont(name: "Raleway", size: 12)
+        label.font = UIFont(name: "Arial", size: 10)
+        label.textColor = lightGray
         label.text = "\(month) \(separatedDate[2]), \(separatedDate[0])"
         label.textAlignment = .center
         return label
@@ -583,12 +581,14 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     
     
     fileprivate func setupCell(_ cell: ChatMessageCell, post: Post, hasPlace:Bool, index:Int) {
+        //set up profile picture
         if post.profileId != FirebaseHelper.personal.userId {
             let iconString = profileIcons.object(forKey: post.profileId) as! String
             let data = Data(base64Encoded: iconString, options: .ignoreUnknownCharacters)
             cell.profileImageView.image = UIImage(data:data!)
         }
-
+        
+        //set up image if there is one
         if post.image != ""{
             loadImageUsingUrlString(post.image, image: { (image) in
                 cell.messageImageView.image = image
@@ -598,7 +598,7 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             cell.button.tag = index
             cell.button.addTarget(self, action: #selector(imageTapped(sender:)), for: .touchUpInside)
         }
-        
+        //change location and color based on who sent, modify to a "link" if place is contained
         if post.profileId == FirebaseHelper.personal.userId {
             //outgoing green
             cell.bubbleView.backgroundColor = darkBgColor
@@ -607,7 +607,6 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
                 
                 let string = NSAttributedString(string: cell.textView.text!, attributes: [NSAttributedStringKey.underlineStyle:NSUnderlineStyle.styleSingle.rawValue, NSAttributedStringKey.strokeColor:darkGray,NSAttributedStringKey.font:cell.textView.font])
                 cell.textView.attributedText = string
-//                cell.textView.textColor = darkGray
                 
             }
             cell.profileImageView.isHidden = true
@@ -622,12 +621,9 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
             cell.profileImageView.isHidden = false
             cell.profileImageView.frame.origin.y = cell.bubbleView.frame.origin.y
             if let place = post.place as? GMSPlace{
-                
                 let string = NSAttributedString(string: cell.textView.text!, attributes: [NSAttributedStringKey.underlineStyle:NSUnderlineStyle.styleSingle.rawValue, NSAttributedStringKey.strokeColor:blue,NSAttributedStringKey.font:cell.textView.font])
                 
                 cell.textView.attributedText = string
-                
-//                cell.textView.textColor = blue
             }
             
             cell.bubbleViewRightAnchor?.isActive = false

@@ -1,11 +1,7 @@
 //
-//  RESTHelper.swift
+//  FirebaseHelper.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 11/5/17.
-//  Copyright © 2017 Kevin Zhou. All rights reserved.
-//
-
 import Foundation
 import UIKit
 import Firebase
@@ -25,7 +21,7 @@ class FirebaseHelper{
     //updates personal in Firebase
     static func updatePersonal(){
         let usersRef = ref.child("users").child(personal.userId)
-        let userValues = ["username":personal.username,"email":personal.email,"icon":personal.icon,"latitude":personal.latitude,"longitude":personal.longitude] as [String : Any]
+        let userValues = ["username":personal.username,"icon":personal.icon,"latitude":personal.latitude,"longitude":personal.longitude] as [String : Any]
         usersRef.updateChildValues(userValues, withCompletionBlock: { (err, ref) in
             if err != nil{
                 print(err)

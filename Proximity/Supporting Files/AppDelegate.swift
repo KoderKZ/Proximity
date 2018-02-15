@@ -2,10 +2,6 @@
 //  AppDelegate.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 11/3/17.
-//  Copyright © 2017 Kevin Zhou. All rights reserved.
-//
-
 import UIKit
 import Firebase
 import CoreLocation
@@ -99,7 +95,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate,CLLocationManagerDelegate 
             }
         }
         if let profileVC = navigationController?.topViewController as? ProfileViewController{
-            profileVC.findSelfRegion()
+            profileVC.findSelfRegion()//finds self region if profile view controller is present
         }
         
     }

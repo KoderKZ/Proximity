@@ -2,9 +2,6 @@
 //  ForgotPasswordViewController.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 11/27/17.
-//  Copyright © 2017 Kevin Zhou. All rights reserved.
-//
 
 import Foundation
 import UIKit
@@ -17,6 +14,7 @@ class ForgotPasswordViewController:UIViewController{
     
     override func viewDidLoad() {
         //set up ui/default functions
+        self.view.backgroundColor = .clear
         self.view.setGradientBackground(colorOne: lightGray, colorTwo: bgColor)
         
         self.hideKeyboardWhenTappedAround()
@@ -34,17 +32,22 @@ class ForgotPasswordViewController:UIViewController{
         emailTextField.delegate = self
 
     }
+    override func viewWillAppear(_ animated: Bool) {
+        self.errorLabel.alpha = 0
+    }
     
     @IBAction func finishButtonTapped(_ sender: Any) {
         if emailTextField.text! == confirmTextField.text!{
             Auth.auth().sendPasswordReset(withEmail: emailTextField.text!) { (err) in//Firebase will help send email
                 if err != nil{//error, gives description
                     self.errorLabel.text = err?.localizedDescription
+                    self.errorLabel.alpha = 1
                     return
                 }
                 self.navigationController?.popViewController(animated: true)
             }
         }else{
+            self.errorLabel.alpha = 1
             self.errorLabel.text = "Emails do not match"
         }
     }

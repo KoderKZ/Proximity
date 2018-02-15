@@ -2,9 +2,6 @@
 //  RegistrationViewController.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 11/26/17.
-//  Copyright © 2017 Kevin Zhou. All rights reserved.
-//
 
 import Foundation
 import UIKit
@@ -22,7 +19,8 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
     override func viewDidLoad() {
         //set up ui/default values
         self.hideKeyboardWhenTappedAround()
-        self.view.setGradientBackground(colorOne: .white, colorTwo: lightGray)
+        self.view.backgroundColor = .clear
+        self.view.setGradientBackground(colorOne: lightGray, colorTwo: bgColor)
         usernameTextField.returnKeyType = .done
         usernameTextField.delegate = self
         
@@ -130,12 +128,13 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
                         return
                     }
                     let vc = self.storyboard?.instantiateViewController(withIdentifier: "SelectionViewController")
-                    //set user
-                    FirebaseHelper.personal = Personal(username: self.usernameTextField.text!, userId: FirebaseHelper.personal.userId, friendRequests: NSMutableArray(), email: self.emailTextField.text!, friends: NSMutableArray(), icon: (UIImageJPEGRepresentation(self.chooseImageButton.backgroundImage(for: .normal)!, 1.0)?.base64EncodedString())!, chats: NSMutableArray(), latitude: 0, longitude: 0)
-                    self.navigationController?.pushViewController(vc!, animated: true)
+                    //set own user
+                    FirebaseHelper.personal = Personal(username: self.usernameTextField.text!, userId: (user?.uid)!, friendRequests: NSMutableArray(), friends: NSMutableArray(), icon: (UIImageJPEGRepresentation(self.chooseImageButton.backgroundImage(for: .normal)!, 1.0)?.base64EncodedString())!, chats: NSMutableArray(), latitude: 0, longitude: 0)
                     FirebaseHelper.updatePersonal()
+                    FirebaseHelper.ref.child("users").child((user?.uid)!).updateChildValues(["latitudeRegion":"-500","longitudeRegion":"-500"])
+                    FirebaseHelper.ref.child("names").updateChildValues([FirebaseHelper.personal.username:FirebaseHelper.personal.userId])
+                    self.navigationController?.pushViewController(vc!, animated: true)//push to next vc
                 }
-                FirebaseHelper.ref.child("names").updateChildValues([FirebaseHelper.personal.username:FirebaseHelper.personal.userId])
             }else{
                 //print error message
                 errorLabel.alpha = 1

@@ -2,10 +2,6 @@
 //  SignInViewController.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 11/22/17.
-//  Copyright © 2017 Kevin Zhou. All rights reserved.
-//
-
 
 import Foundation
 import UIKit

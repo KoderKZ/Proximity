@@ -2,20 +2,16 @@
 //  ClassStructs.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 11/5/17.
-//  Copyright © 2017 Kevin Zhou. All rights reserved.
-//
 
 import Foundation
 import UIKit
 import GooglePlaces
 import FirebaseAuth
-//Classes to cast to when pulling out from JSON from backend
+//structs for information storage
 public struct Personal{
     var username:String
     var userId:String
     var friendRequests:NSMutableArray
-    var email:String
     var friends:NSMutableArray
     var icon:String
     var chats:NSMutableArray
@@ -44,7 +40,6 @@ public struct Chat{
 public struct Post{
     var chatId:String
     var text:String
-//    var poll:Poll
     var image:String
     var profileId:String
     var timestamp:String
@@ -52,19 +47,7 @@ public struct Post{
     var place:AnyObject
 }
 
-public struct Poll{
-    var question:String
-    var answer1:String
-    var amount1:Int
-    var answer2:String
-    var amount2:Int
-    var answer3:String
-    var amount3:Int
-    var answer4:String
-    var amount4:Int
-}
-
-
+//will store amt viewed for each user's chat so can they can get notifications
 protocol StoreViewedDelegate{
     func changedAmt()
 }
@@ -89,21 +72,21 @@ class StoreViewed{
     func loggedIn(){
         for var i in FirebaseHelper.personal.chats{
             let chat = i as! Chat
-            addObserver(chatId: chat.id)
+            addObserver(chatId: chat.id)//add observer for each chat
         }
     }
     
     func addObserver(chatId:String){
         let amtRef = FirebaseHelper.ref.child("chats").child(chatId).child("posts").observe(.value, with: { (snapshot) in
             if let dict = snapshot.value as? NSDictionary{
-                self.postsAmt.removeObject(forKey: chatId)
+                self.postsAmt.removeObject(forKey: chatId)//get amt of posts
                 self.postsAmt.addEntries(from: [chatId:dict.count])
                 self.delegate.changedAmt()
             }
         })
         let viewedRef = FirebaseHelper.ref.child("chats").child(chatId).child("viewed").child(FirebaseHelper.personal.userId).observe(.value, with: { (snapshot) in
             if let viewed = snapshot.value as? NSDictionary{
-                self.amtViewed.removeObject(forKey: chatId)
+                self.amtViewed.removeObject(forKey: chatId)//get amt viewed
                 self.amtViewed.addEntries(from: [chatId:viewed[FirebaseHelper.personal.userId]])
                 self.delegate.changedAmt()
             }
@@ -116,7 +99,7 @@ class StoreViewed{
         }
     }
     
-    func removeObserver(chatId:String) {
+    func removeObserver(chatId:String) {//remove observer in case of leaving chat
         let amtOb = amtRefs.object(forKey: chatId) as! UInt
         FirebaseHelper.ref.removeObserver(withHandle: amtOb)
         amtRefs.removeObject(forKey: chatId)
@@ -126,15 +109,15 @@ class StoreViewed{
         viewedRefs.removeObject(forKey: chatId)
     }
     
-    func addViewed(id:String){
+    func addViewed(id:String){//add viewed when view messages
         if (amtViewed.allKeys as NSArray).contains(id){
             amtViewed.removeObject(forKey: id)
         }
         amtViewed.addEntries(from: [id:"\(postsAmt.object(forKey: id))"])
-        FirebaseHelper.ref.child("chats").child(id).child("viewed").child(FirebaseHelper.personal.userId).updateChildValues([FirebaseHelper.personal.userId:postsAmt.object(forKey: id)])
+        FirebaseHelper.ref.child("chats").child(id).child("viewed").updateChildValues([FirebaseHelper.personal.userId:postsAmt.object(forKey: id)])
     }
     
-    func getNotViewed(id:String) -> Int{
+    func getNotViewed(id:String) -> Int{//get how many not viewed for notifications
         if let firstValue = postsAmt.object(forKey: id) as? Int{
             if let secondValue = amtViewed.object(forKey: id) as? Int{
                 return firstValue-secondValue
@@ -145,8 +128,8 @@ class StoreViewed{
     
 }
 
-class StoreLogin{
-    let defaults = UserDefaults.standard
+class StoreLogin{//store login so can stay logged in
+    let defaults = UserDefaults.standard//uses defaults built in
     var username:String = ""
     var password:String = ""
     
@@ -159,7 +142,7 @@ class StoreLogin{
     }
     
     init(){
-        if let un = defaults.string(forKey: "username"){
+        if let un = defaults.string(forKey: "username"){//gets user name and password
             username = un
         }
         if let pass = defaults.string(forKey: "password"){
@@ -168,7 +151,7 @@ class StoreLogin{
     }
     
     func setLogin(username:String, password:String) {
-        defaults.set(username, forKey: "username")
+        defaults.set(username, forKey: "username")//sets login, will be saved even when quit app
         defaults.set(password, forKey: "password")
     }
     
@@ -190,7 +173,7 @@ class StoreLogin{
     }
 }
 
-
+//used for dating/sectioning in chat vc
 public let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
 //color palatte
@@ -229,16 +212,6 @@ public func loadImageUsingUrlString(_ imageString: String, image: @escaping (UII
     if let cachedImage = imageCache.object(forKey: imageString as AnyObject) as? UIImage {
         image(cachedImage)
     }else{
-//        FirebaseHelper.storageRef.child("images/\(urlString).jpeg").getData(maxSize: 50*(1024*1024), completion: { (data, err) in
-//            if let error = err{
-//                print("couldn't download image")
-//                return
-//            }
-//            if let downloadedImage = UIImage(data: data!) {
-//                imageCache.setObject(downloadedImage, forKey: urlString as AnyObject)
-//                image(downloadedImage)
-//            }
-//        })
         let newImage = UIImage(data: Data(base64Encoded: imageString)!)!
         imageCache.setObject(newImage, forKey: imageString as AnyObject)
         image(newImage)
@@ -246,7 +219,7 @@ public func loadImageUsingUrlString(_ imageString: String, image: @escaping (UII
     
 }
 
-import UIKit.UIGestureRecognizerSubclass
+import UIKit.UIGestureRecognizerSubclass//gesture recognizer, touchesbegan
 class SingleTouchDownGestureRecognizer: UIGestureRecognizer{
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
         if self.state == .possible{
@@ -260,6 +233,7 @@ class SingleTouchDownGestureRecognizer: UIGestureRecognizer{
         self.state = .failed
     }
 }
+
 extension UITableView {
     func reloadData(completion: @escaping ()->()) {
         UIView.animate(withDuration: 0, animations: { self.reloadData() })//completion block for reload data
@@ -340,6 +314,13 @@ func loginProcess(username:String, password:String, error: @escaping (Error) -> 
                 latitude = dictionary["latitude"] as! Double
                 longitude = dictionary["longitude"] as! Double
                 username = dictionary["username"] as! String
+                FirebaseHelper.personalRegion = CGPoint(x: -500, y: -500)
+                if let latitudeReg = dictionary["latitudeRegion"] as? CGFloat{
+                    if let longitudeReg = dictionary["longitudeRegion"] as? CGFloat{
+                        FirebaseHelper.personalRegion = CGPoint(x: latitudeReg, y: longitudeReg)
+                    }
+                }
+
             }
             ref.child("chats").observeSingleEvent(of: .value, with: { (snapshot2) in
                 if let array = snapshot2.value as? NSArray{
@@ -423,7 +404,7 @@ func loginProcess(username:String, password:String, error: @escaping (Error) -> 
                         }
                     }
                     finishedFriendRequests = true
-                    FirebaseHelper.personal = Personal(username: username, userId: (user?.uid)!, friendRequests: friendRequests, email: username, friends: friends, icon: icon, chats: chats, latitude: latitude, longitude: longitude)
+                    FirebaseHelper.personal = Personal(username: username, userId: (user?.uid)!, friendRequests: friendRequests, friends: friends, icon: icon, chats: chats, latitude: latitude, longitude: longitude)
                     if actualIconAmt == requiredIconAmt{
                         finished(true)
                     }

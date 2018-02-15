@@ -2,9 +2,6 @@
 //  StartingViewController.swift
 //  Proximity
 //
-//  Created by Kevin Zhou on 1/16/18.
-//  Copyright © 2018 Kevin Zhou. All rights reserved.
-//
 
 import Foundation
 import UIKit
