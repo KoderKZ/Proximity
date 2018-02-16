@@ -101,6 +101,7 @@ class CreateChatViewController:UIViewController,UITableViewDataSource,UITableVie
     }
     
     @IBAction func createTapped(_ sender: Any) {
+        createButton.isEnabled = false
         let usersRef = FirebaseHelper.ref.child("chats").childByAutoId()
         FirebaseHelper.ref.child("chats").observeSingleEvent(of: .value) { (snapshot) in
             var string = ""

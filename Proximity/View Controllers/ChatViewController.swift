@@ -583,9 +583,10 @@ class ChatViewController:UIViewController,UITableViewDelegate,UITableViewDataSou
     fileprivate func setupCell(_ cell: ChatMessageCell, post: Post, hasPlace:Bool, index:Int) {
         //set up profile picture
         if post.profileId != FirebaseHelper.personal.userId {
-            let iconString = profileIcons.object(forKey: post.profileId) as! String
-            let data = Data(base64Encoded: iconString, options: .ignoreUnknownCharacters)
-            cell.profileImageView.image = UIImage(data:data!)
+            if let iconString = profileIcons.object(forKey: post.profileId) as? String{
+                let data = Data(base64Encoded: iconString, options: .ignoreUnknownCharacters)
+                cell.profileImageView.image = UIImage(data:data!)
+            }
         }
         
         //set up image if there is one

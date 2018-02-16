@@ -117,7 +117,7 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
                                 self.images.addEntries(from: [self.names.allKeys[i] as! String:image])
 
                                 self.updateSortedNames()
-
+                                self.tableView.reloadData()
                                 if let requests = dict["friendRequests"] as? NSArray{
                                     if requests.contains(FirebaseHelper.personal.userId){
                                         self.sentRequests.add(value)
@@ -225,11 +225,14 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
                 cell.contentView.addSubview(addFriendButton)
             }
             cell.textLabel?.text = "                    "+(sortedNames.object(at: indexPath.row) as! String)
-            let imageView = UIImageView(image: images.object(forKey: sortedNames.object(at: indexPath.row) as! String) as! UIImage)
-            imageView.frame = CGRect(x: 5, y: 5, width: 50, height: 50)
-            imageView.layer.cornerRadius = imageView.frame.size.width/2
-            imageView.layer.masksToBounds = true
-            cell.contentView.addSubview(imageView)
+            if let image = images.object(forKey: sortedNames.object(at: indexPath.row) as! String) as? UIImage{
+                let imageView = UIImageView(image: image)
+                imageView.frame = CGRect(x: 5, y: 5, width: 50, height: 50)
+                imageView.layer.cornerRadius = imageView.frame.size.width/2
+                imageView.layer.masksToBounds = true
+                cell.contentView.addSubview(imageView)
+
+            }
 
 
         }
@@ -382,8 +385,8 @@ class AddViewController:UIViewController,UITableViewDelegate,UITableViewDataSour
             tableView.reloadData()
         }else{
             sortedNames.removeAllObjects()
+            tableView.reloadData()
         }
-        tableView.reloadData()
 
     }
     

@@ -13,6 +13,7 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
     @IBOutlet weak var emailTextField: UITextField!
     @IBOutlet weak var passwordTextField: UITextField!
     @IBOutlet weak var confirmPasswordTextField: UITextField!
+    var moveView:Bool = false
     
     @IBOutlet weak var errorLabel: UILabel!
     var image:UIImage!
@@ -38,11 +39,13 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
         border3.frame = CGRect(x: 0, y: passwordTextField.frame.size.height, width: self.view.frame.size.width-(passwordTextField.frame.origin.x*2), height: 1)
         border3.backgroundColor = UIColor.black.cgColor
         passwordTextField.layer.addSublayer(border3)
+        passwordTextField.delegate = self
         
         let border4 = CALayer()
         border4.frame = CGRect(x: 0, y: confirmPasswordTextField.frame.size.height, width: self.view.frame.size.width-(confirmPasswordTextField.frame.origin.x*2), height: 1)
         border4.backgroundColor = UIColor.black.cgColor
         confirmPasswordTextField.layer.addSublayer(border4)
+        confirmPasswordTextField.delegate = self
         
         chooseImageButton.backgroundColor = .clear
 
@@ -69,6 +72,38 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
                                                                      attributes: [NSAttributedStringKey.foregroundColor: UIColor.black])
 
         
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShow), name: NSNotification.Name.UIKeyboardWillShow, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHide), name: NSNotification.Name.UIKeyboardWillHide, object: nil)
+        
+    }
+    
+    
+    //keyboard updaters
+    @objc func keyboardWillShow(notification:NSNotification){
+        if moveView{
+            let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
+            let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
+
+            UIView.animate(withDuration: keyboardDuration) {
+                self.view.frame.origin.y -= keyboardFrame.size.height
+            }
+        }
+    }
+    
+    @objc func keyboardWillHide(notification:NSNotification){
+        if moveView{
+            let keyboardDuration = notification.userInfo?[UIKeyboardAnimationDurationUserInfoKey] as! Double
+            let keyboardFrame = notification.userInfo?[UIKeyboardFrameEndUserInfoKey] as! CGRect
+
+            UIView.animate(withDuration: keyboardDuration) {
+                self.view.frame.origin.y += keyboardFrame.size.height
+            }
+        }
+        moveView = false
+    }
+    
+    func textFieldDidBeginEditing(_ textField: UITextField) {
+        moveView = true
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -78,7 +113,6 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(true)
-        //
         if image != nil{
             chooseImageButton.setBackgroundImage(image!, for: .normal)
             chooseImageButton.setTitle("", for: .normal)
@@ -106,6 +140,15 @@ class RegistrationViewController:UIViewController,UIImagePickerControllerDelegat
         
         let image = info[UIImagePickerControllerEditedImage] as! UIImage
         self.image = image
+    }
+    
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {//only allow alphabet
+        let characterSet = CharacterSet.letters
+        
+        if string.rangeOfCharacter(from: characterSet.inverted) != nil {
+            return false
+        }
+        return true
     }
     
     @IBAction func backTapped(_ sender: Any) {//pops current vc
