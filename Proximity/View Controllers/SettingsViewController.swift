@@ -47,7 +47,7 @@ class SettingsViewController: UIViewController,UITableViewDelegate,UITableViewDa
         
         chatNameTextField.delegate = self
         
-        membersTable = UITableView(frame: CGRect(x: membersTitle.frame.origin.x, y: membersTitle.frame.origin.y+membersTitle.frame.size.height+10, width: self.view.frame.size.width-(membersTitle.frame.origin.x*2), height: self.view.frame.size.height-50-membersTitle.frame.origin.y))
+        membersTable = UITableView(frame: CGRect(x: membersTitle.frame.origin.x, y: membersTitle.frame.origin.y+membersTitle.frame.size.height+10, width: self.view.frame.size.width-(membersTitle.frame.origin.x*2), height: self.view.frame.size.height-(leaveChatButton.frame.size.height+50+membersTitle.frame.origin.y)))
         membersTable.backgroundColor = .clear
         membersTable.bounces = false
         membersTable.dataSource = self
@@ -78,8 +78,7 @@ class SettingsViewController: UIViewController,UITableViewDelegate,UITableViewDa
         FirebaseHelper.personal.chats.removeObject(at: indexChat)
         
         //remove from firebase
-        FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("chats").removeValue()
-        FirebaseHelper.ref.child("chats").child("\(chat.id)").child("members").removeValue()
+
         
         FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("chats").observeSingleEvent(of: .value) { (snapshot1) in
             if let array = snapshot1.value as? NSMutableArray{
@@ -88,6 +87,7 @@ class SettingsViewController: UIViewController,UITableViewDelegate,UITableViewDa
                 for var i in 0..<array.count{
                     dict.addEntries(from: ["\(i)":array[i]])
                 }
+                FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("chats").removeValue()
                 snapshot1.ref.updateChildValues(dict as! [AnyHashable:Any])
                 
             }
@@ -98,6 +98,7 @@ class SettingsViewController: UIViewController,UITableViewDelegate,UITableViewDa
                     for var i in 0..<array.count{
                         dict.addEntries(from: ["\(i)":array[i]])
                     }
+                    FirebaseHelper.ref.child("chats").child("\(self.chat.id)").child("members").removeValue()
                     snapshot2.ref.updateChildValues(dict as! [AnyHashable:Any])
                     self.chat = nil
                     self.delegate.leftChat()//pop view controller

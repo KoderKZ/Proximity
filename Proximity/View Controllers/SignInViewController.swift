@@ -107,6 +107,12 @@ class SignInViewController:UIViewController{//sign in vc
                 self.signInButton.setTitleColor(.white, for: .normal)
                 self.signInButton.setBackgroundImage(nil, for: .normal)
             }
+            
+            self.signInButton.setTitleColor(.white, for: .normal)
+            delay(0.51){
+                self.signInButton.setBackgroundImage(nil, for: .normal)
+            }
+
         }) { (bool) in
             self.animatingView.alpha = 1//successfully logged in, animate to next view
 

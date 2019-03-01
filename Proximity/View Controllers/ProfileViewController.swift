@@ -61,8 +61,12 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
         
-        mapView.animate(toLocation: CLLocationCoordinate2DMake(profile.latitude, profile.longitude))
-        mapView.animate(toZoom: 15)
+        addFriendButton.tag = -1
+        
+        if profile.latitude != 0 && profile.longitude != 0{
+            mapView.animate(toLocation: CLLocationCoordinate2DMake(profile.latitude, profile.longitude))
+            mapView.animate(toZoom: 15)
+        }
         mapView.delegate = self
         mapView.isUserInteractionEnabled = true
         placesClient = GMSPlacesClient.shared()
@@ -198,8 +202,10 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
                 self.profileView.frame.origin = self.regularProfileViewOrigin
                 self.mapView.frame.size.height = self.regularMapViewHeight
                 self.nearbyPlacesButton.frame.origin.y = self.mapView.frame.size.height-self.nearbyPlacesButton.frame.size.height
-                self.mapView.animate(toLocation: CLLocationCoordinate2DMake(self.profile.latitude, self.profile.longitude))
-                self.mapView.animate(toZoom: 15)
+                if self.profile.latitude != 0 && self.profile.longitude != 0{
+                    self.mapView.animate(toLocation: CLLocationCoordinate2DMake(self.profile.latitude, self.profile.longitude))
+                    self.mapView.animate(toZoom: 15)
+                }
                 if self.homeMenu{
                     self.selectionView.frame.origin.y = self.view.frame.size.height-90
                 }
@@ -230,9 +236,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     
     
     func fetchFriendRequests(){//get friend requests, can show in own profile
-        var members = NSArray()
         FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).child("friendRequests").observe(.childAdded) { (snapshot) in
-            var contains = false
             FirebaseHelper.ref.child("users").child(snapshot.value as! String).observeSingleEvent(of: .value, with: { (snapshot2) in
                 if let dictionary = snapshot2.value as? [String:AnyObject]{
                     var friends = NSMutableArray()
@@ -240,7 +244,16 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
                     if dictionary.keys.contains("friends"){friends = dictionary["friends"] as! NSMutableArray}
                     if dictionary.keys.contains("chats"){chats = dictionary["chats"] as! NSMutableArray}
                     let profile = Profile(username: dictionary["username"] as! String, userId: snapshot.value as! String, friends: friends, icon: dictionary["icon"] as! String, chats: chats, latitude: dictionary["latitude"] as! Double, longitude: dictionary["longitude"] as! Double)
-                    FirebaseHelper.personal.friendRequests.add(profile)
+                    var contains = false
+                    for var i in 0..<FirebaseHelper.personal.friendRequests.count{
+                        if profile.userId == (FirebaseHelper.personal.friendRequests.object(at: i) as! Profile).userId{
+                            contains = true
+                        }
+                    }
+                    if !contains{
+                        FirebaseHelper.personal.friendRequests.add(profile)
+                    }
+                    
                 }
             })
         }
@@ -320,33 +333,36 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
         makeMarker(array: profiles)
         makeMarker(array: FirebaseHelper.nearbyProfiles)
         
-        let marker = GMSMarker(position: CLLocationCoordinate2DMake(profile.latitude, profile.longitude))
-        marker.title = profile.username
-        let image = self.imageWithImage(image: UIImage(data: Data(base64Encoded: profile.icon, options: .ignoreUnknownCharacters)!)!, scaledToSize: CGSize(width: 30, height: 30))
-        let markerView = UIImageView(image: image)
-        markerView.layer.cornerRadius = 15
-        markerView.layer.masksToBounds = true
-        markerView.frame.size = CGSize(width: 30, height: 30)
-        marker.iconView = markerView
-        
-        marker.map = self.mapView
+        if profile.latitude != 0 && profile.longitude != 0{
+            let marker = GMSMarker(position: CLLocationCoordinate2DMake(profile.latitude, profile.longitude))
+            marker.title = profile.username
+            let image = self.imageWithImage(image: UIImage(data: Data(base64Encoded: profile.icon, options: .ignoreUnknownCharacters)!)!, scaledToSize: CGSize(width: 30, height: 30))
+            let markerView = UIImageView(image: image)
+            markerView.layer.cornerRadius = 15
+            markerView.layer.masksToBounds = true
+            markerView.frame.size = CGSize(width: 30, height: 30)
+            marker.iconView = markerView
+            
+            marker.map = self.mapView
+        }
     }
     
     func makeMarker(array:NSArray){
         for var _profile in array{//make markers from array of uids
             FirebaseHelper.ref.child("users").child(_profile as! String).observeSingleEvent(of: .value, with: { (profile) in
                 if let dictionary = profile.value as? [String:AnyObject]{
-                    
-                    let marker = GMSMarker(position: CLLocationCoordinate2DMake(dictionary["latitude"] as! Double, dictionary["longitude"] as! Double))
-                    marker.title = dictionary["username"] as! String
-                    let image = self.imageWithImage(image: UIImage(data: Data(base64Encoded: dictionary["icon"] as! String, options: .ignoreUnknownCharacters)!)!, scaledToSize: CGSize(width: 30, height: 30))
-                    let markerView = UIImageView(image: image)
-                    markerView.layer.cornerRadius = 15
-                    markerView.layer.masksToBounds = true
-                    markerView.frame.size = CGSize(width: 30, height: 30)
-                    marker.iconView = markerView
-                    
-                    marker.map = self.mapView
+                    if dictionary["latitude"] as! Double != 0 && dictionary["longitude"] as! Double != 0{
+                        let marker = GMSMarker(position: CLLocationCoordinate2DMake(dictionary["latitude"] as! Double, dictionary["longitude"] as! Double))
+                        marker.title = dictionary["username"] as! String
+                        let image = self.imageWithImage(image: UIImage(data: Data(base64Encoded: dictionary["icon"] as! String, options: .ignoreUnknownCharacters)!)!, scaledToSize: CGSize(width: 30, height: 30))
+                        let markerView = UIImageView(image: image)
+                        markerView.layer.cornerRadius = 15
+                        markerView.layer.masksToBounds = true
+                        markerView.frame.size = CGSize(width: 30, height: 30)
+                        marker.iconView = markerView
+                        
+                        marker.map = self.mapView
+                    }
                 }
             })
         }
@@ -404,16 +420,17 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
             for var chat in FirebaseHelper.personal.chats{
                 chatArray.add((chat as! Chat).id)
             }
-            if !chatArray.contains((profile.chats.object(at: indexPath.row) as! String)){
-                let joinChatButton = UIButton(frame: CGRect(x: tableView.frame.size.width-100, y: 0, width: 100, height: 60))
-                joinChatButton.setTitle("Add", for: .normal)
-                joinChatButton.setTitleColor(.black, for: .normal)
-                joinChatButton.tag = indexPath.row
-                joinChatButton.addTarget(self, action: #selector(joinChat(sender:)), for: .touchUpInside)
-                cell.contentView.addSubview(joinChatButton)
-            }
+
             FirebaseHelper.ref.child("chats").child(profile.chats.object(at: indexPath.row) as! String).child("chatName").observeSingleEvent(of: .value, with: { (name) in
                 cell.textLabel?.text = name.value as! String
+                if !chatArray.contains((self.profile.chats.object(at: indexPath.row) as! String)){
+                    let joinChatButton = UIButton(frame: CGRect(x: tableView.frame.size.width-100, y: 0, width: 100, height: 60))
+                    joinChatButton.setTitle("Add", for: .normal)
+                    joinChatButton.setTitleColor(.black, for: .normal)
+                    joinChatButton.tag = indexPath.row
+                    joinChatButton.addTarget(self, action: #selector(self.joinChat(sender:)), for: .touchUpInside)
+                    cell.contentView.addSubview(joinChatButton)
+                }
             })
         }else if indexPath.section == 1{
             let friendArray = NSMutableArray()
@@ -421,22 +438,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
                 friendArray.add((friend as! Profile).userId)
             }
             var addFriendButton = UIButton()
-            if FirebaseHelper.personal.userId == profile.userId && !friendArray.contains((profile.friends.object(at: indexPath.row) as! String)){
-                addFriendButton = UIButton(frame: CGRect(x: tableView.frame.size.width-100, y: 0, width: 100, height: 60))
-                addFriendButton.setTitle("Add", for: .normal)
-                addFriendButton.setTitleColor(.black, for: .normal)
-                addFriendButton.tag = indexPath.row
-                for var i in 0..<FirebaseHelper.personal.friendRequests.count{
-                    addFriendButton.addTarget(self, action: #selector(sendRequest(sender:)), for: .touchUpInside)
-                    if profile.friends.object(at: indexPath.row) as! String == (FirebaseHelper.personal.friendRequests.object(at: i) as! Profile).userId{
-                        addFriendButton.tag = i
-                        addFriendButton.removeTarget(self, action: #selector(sendRequest(sender:)), for: .touchUpInside)
-                        addFriendButton.addTarget(self, action: #selector(acceptRequest(sender:)), for: .touchUpInside)
-                    }
-                }
-                
-                cell.contentView.addSubview(addFriendButton)
-            }
+
             FirebaseHelper.ref.child("users").child(profile.friends.object(at: indexPath.row) as! String).observeSingleEvent(of: .value, with: { (profile) in
                 if let dictionary = profile.value as? [String:AnyObject]{
                     cell.textLabel?.text = "                    "+(dictionary["username"] as! String)
@@ -447,8 +449,26 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
                     imageView.layer.masksToBounds = true
                     cell.contentView.addSubview(imageView)
                     
+                    if FirebaseHelper.personal.userId != self.profile.userId && !friendArray.contains((self.profile.friends.object(at: indexPath.row) as! String)){
+                        addFriendButton = UIButton(frame: CGRect(x: tableView.frame.size.width-100, y: 0, width: 100, height: 60))
+                        addFriendButton.setTitle("Add", for: .normal)
+                        addFriendButton.setTitleColor(.black, for: .normal)
+                        addFriendButton.tag = indexPath.row
+                        for var i in 0..<FirebaseHelper.personal.friendRequests.count{
+                            addFriendButton.addTarget(self, action: #selector(self.sendRequest(sender:)), for: .touchUpInside)
+                            if self.profile.friends.object(at: indexPath.row) as! String == (FirebaseHelper.personal.friendRequests.object(at: i) as! Profile).userId{
+                                addFriendButton.tag = i
+                                addFriendButton.removeTarget(self, action: #selector(self.sendRequest(sender:)), for: .touchUpInside)
+                                addFriendButton.addTarget(self, action: #selector(self.acceptRequest(sender:)), for: .touchUpInside)
+                            }
+                        }
+                        
+                        cell.contentView.addSubview(addFriendButton)
+                    }
+                    
                     if dictionary.keys.contains("friendRequests") && (dictionary["friendRequests"] as! NSArray).contains(FirebaseHelper.personal.userId){
-                        addFriendButton.removeFromSuperview()
+                        addFriendButton.setTitle("Requested", for: .normal)
+                        addFriendButton.isEnabled = false
                     }
                 }
             })
@@ -538,15 +558,13 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
                             }
                         }
                     }
-                    FirebaseHelper.ref.child("chats").child("\(self.profile.chats.object(at: sender.tag))").child("members").updateChildValues(["\((chat["members"] as! NSArray).count)":FirebaseHelper.personal.userId])
+                    FirebaseHelper.ref.child("chats").child("\(self.profile.chats.object(at: sender.tag))").child("members").updateChildValues(["\(members.count)":FirebaseHelper.personal.userId])
                     var posts = NSMutableArray()
-                    if chat["posts"] != nil{
-                        posts = chat["posts"] as! NSMutableArray
-                    }
-                    let addChat = Chat(id: chat["id"] as! String, chatName: chat["chatName"] as! String, joinType: chat["joinType"] as! Int, members: members, posts: posts)
+                    let addChat = Chat(id: self.profile.chats.object(at: sender.tag) as! String, chatName: chat["chatName"] as! String, joinType: chat["joinType"] as! Int, members: members, posts: posts)
                     FirebaseHelper.personal.chats.add(addChat)
+                    FirebaseHelper.updatePersonal()
                     sender.setTitle("Joined", for: .normal)
-                    StoreViewed.sharedInstance.addObserver(chatId: chat["id"] as! String)
+                    StoreViewed.sharedInstance.addObserver(chatId: addChat.id)
                 }else{//denied access if chat is closed
                     sender.setTitle("Closed", for: .normal)
                 }
@@ -574,7 +592,7 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
                         value = [(dict["friendRequests"] as! NSArray).count:FirebaseHelper.personal.userId]
                     }
                 }else{
-                    value = [0:FirebaseHelper.personal.userId]
+                    value = ["0":FirebaseHelper.personal.userId]
                 }
                 FirebaseHelper.ref.child("users").child(_profile).child("friendRequests").updateChildValues(value)
                 sender.setTitle("Requested", for: .normal)
@@ -625,43 +643,45 @@ class ProfileViewController:UIViewController,CLLocationManagerDelegate,GMSMapVie
     }
     
     func findSelfRegion(){//find region in the world
-        let absLatitude = abs(FirebaseHelper.personal.latitude)
-        let adjLatitude = FirebaseHelper.personal.latitude + 90
-        let adjLongitude = FirebaseHelper.personal.longitude+180
-        
-        let roundedLatitude = round(adjLatitude/0.5)*0.5
-        let latitudeRegion = roundedLatitude/0.5
-        
-        let lengthOfLatEquator = 69.172
-        let distanceAroundLatLine = (cos(absLatitude*Double.pi/180)*lengthOfLatEquator)*180
-        
-        let amtLongRegions = round(distanceAroundLatLine/30)
-        
-        let longRegion = round(adjLongitude/(360/amtLongRegions))
-        if Int(longRegion) != Int(FirebaseHelper.personalRegion.x) || Int(latitudeRegion) != Int(FirebaseHelper.personalRegion.y){
-            let savedPoint = FirebaseHelper.personalRegion//remove from Firebase if already in a region
-            if FirebaseHelper.personalRegion.x != -500{
-                FirebaseHelper.ref.child("locations").child("\(Int(FirebaseHelper.personalRegion.x))").child("\(Int(FirebaseHelper.personalRegion.y))").observeSingleEvent(of:.value) { (snapshot) in
-                    if let array = snapshot.value as? NSArray{
-                        let index = array.index(of: FirebaseHelper.personal.userId)
-                        FirebaseHelper.ref.child("locations").child("\(Int(savedPoint.x))").child("\(Int(savedPoint.y))").child("\(index)").removeValue()
+        if FirebaseHelper.personal.latitude != 0 && FirebaseHelper.personal.longitude != 0{
+            let absLatitude = abs(FirebaseHelper.personal.latitude)
+            let adjLatitude = FirebaseHelper.personal.latitude + 90
+            let adjLongitude = FirebaseHelper.personal.longitude+180
+            
+            let roundedLatitude = round(adjLatitude/0.5)*0.5
+            let latitudeRegion = roundedLatitude/0.5
+            
+            let lengthOfLatEquator = 69.172
+            let distanceAroundLatLine = (cos(absLatitude*Double.pi/180)*lengthOfLatEquator)*180
+            
+            let amtLongRegions = round(distanceAroundLatLine/30)
+            
+            let longRegion = round(adjLongitude/(360/amtLongRegions))
+            if Int(latitudeRegion) != Int(FirebaseHelper.personalRegion.x) || Int(longRegion) != Int(FirebaseHelper.personalRegion.y){
+                let savedPoint = FirebaseHelper.personalRegion//remove from Firebase if already in a region
+                if FirebaseHelper.personalRegion.x != -500{
+                    FirebaseHelper.ref.child("locations").child("\(Int(FirebaseHelper.personalRegion.x))").child("\(Int(FirebaseHelper.personalRegion.y))").observeSingleEvent(of:.value) { (snapshot) in
+                        if let array = snapshot.value as? NSArray{
+                            let index = array.index(of: FirebaseHelper.personal.userId)
+                            FirebaseHelper.ref.child("locations").child("\(Int(savedPoint.x))").child("\(Int(savedPoint.y))").child("\(index)").removeValue()
+                        }
                     }
                 }
-            }
-            let stringLat = "\(Int(latitudeRegion))"
-            let stringLong = "\(Int(longRegion))"
-            FirebaseHelper.ref.child("locations").child(stringLat).child(stringLong).observeSingleEvent(of:.value) { (snapshot) in
-                if let profiles = snapshot.value as? NSArray{//update in Firebase
-                    if !profiles.contains(FirebaseHelper.personal.userId){
-                        FirebaseHelper.ref.child("locations").child(stringLat).child(stringLong).updateChildValues(["\(profiles.count)":FirebaseHelper.personal.userId])
+                let stringLat = "\(Int(latitudeRegion))"
+                let stringLong = "\(Int(longRegion))"
+                FirebaseHelper.ref.child("locations").child(stringLat).child(stringLong).observeSingleEvent(of:.value) { (snapshot) in
+                    if let profiles = snapshot.value as? NSArray{//update in Firebase
+                        if !profiles.contains(FirebaseHelper.personal.userId){
+                            FirebaseHelper.ref.child("locations").child(stringLat).child(stringLong).updateChildValues(["\(profiles.count)":FirebaseHelper.personal.userId])
+                        }
+                    }else{
+                        FirebaseHelper.ref.child("locations").child(stringLat).child(stringLong).updateChildValues(["0":FirebaseHelper.personal.userId])
                     }
-                }else{
-                    FirebaseHelper.ref.child("locations").child(stringLat).child(stringLong).updateChildValues(["0":FirebaseHelper.personal.userId])
                 }
-            }
-            FirebaseHelper.personalRegion = CGPoint(x: latitudeRegion, y: longRegion)//update local
-            FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).updateChildValues(["latitudeRegion":Int(FirebaseHelper.personalRegion.x),"longitudeRegion":Int(FirebaseHelper.personalRegion.y)])
+                FirebaseHelper.personalRegion = CGPoint(x: latitudeRegion, y: longRegion)//update local
+                FirebaseHelper.ref.child("users").child(FirebaseHelper.personal.userId).updateChildValues(["latitudeRegion":Int(FirebaseHelper.personalRegion.x),"longitudeRegion":Int(FirebaseHelper.personalRegion.y)])
 
+            }
         }
         
     }

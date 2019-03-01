@@ -46,6 +46,7 @@ class DisplayImageView:UIView{//displays image in chat vc
         UIView.animate(withDuration: 0.5) {
             self.alpha = 0
         }
+        
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {

@@ -80,10 +80,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate,CLLocationManagerDelegate 
                 return
             }
             
-            if (FirebaseHelper.personal.latitude+0.005<locValue.latitude ||//if changed substantial amount, update
-            FirebaseHelper.personal.latitude-0.005>locValue.latitude) &&
-            (FirebaseHelper.personal.longitude+0.005<locValue.longitude &&
-            FirebaseHelper.personal.longitude-0.005>locValue.longitude){
+            if (FirebaseHelper.personal.latitude+0.002<locValue.latitude ||//if changed substantial amount, update
+            FirebaseHelper.personal.latitude-0.002>locValue.latitude) ||
+            (FirebaseHelper.personal.longitude+0.002<locValue.longitude ||
+            FirebaseHelper.personal.longitude-0.002>locValue.longitude){
                 
                 FirebaseHelper.personal.latitude = locValue.latitude
                 FirebaseHelper.personal.longitude = locValue.longitude
