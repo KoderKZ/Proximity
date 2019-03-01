@@ -91,7 +91,9 @@ class SignInViewController:UIViewController{//sign in vc
             self.signInButton.frame = CGRect(origin: CGPoint(x:self.view.frame.size.width/2-self.signInButton.frame.size.height/2,y:self.signInButton.frame.origin.y), size: CGSize(width: self.signInButton.frame.size.height, height: self.signInButton.frame.size.height))
             self.signInButton.setTitleColor(.clear, for: .normal)
         }) { (true) in
-            self.signInButton.setBackgroundImage(self.image, for: .normal)
+            delay(0.25, closure: {
+                self.signInButton.setBackgroundImage(self.image, for: .normal)
+            })
         }
         
         loginProcess(username: emailTextField.text!, password: passwordTextField.text!, error: { (err) in
